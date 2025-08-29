@@ -1,0 +1,19 @@
+{
+  "system_title": "Système de gestion",
+  "welcome": "Bienvenue dans votre espace professionnel",
+  "welcome_subtitle": "Connectez-vous pour accéder au système de gestion",
+  "role": "Rôle",
+  "roles": {
+    "direction": "Direction",
+    "secretaire": "Secrétaire",
+    "medecin": "Médecin référent"
+  },
+  "username": "Email",
+  "password": "Mot de passe",
+  "code": "Code personnel",
+  "login_btn": "Se connecter",
+  "secure_connection": "Connexion sécurisée SSL",
+  "encryption": "Chiffrement 256 bits",
+  "hipaa": "Certifié HIPAA",
+  "auth_error_message": "❌ Nom d’utilisateur ou mot de passe incorrect !"
+}

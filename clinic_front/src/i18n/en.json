@@ -1,0 +1,21 @@
+{
+  "system_title": "Management System",
+  "welcome": "Welcome to your professional space",
+  "welcome_subtitle": "Log in to access the management system",
+  "role": "Role",
+  "roles": {
+    "direction": "Management",
+    "secretaire": "Secretary",
+    "medecin": "Referent doctor"
+  },
+  "username": "Email",
+  "password": "Password",
+  "code": "Personal Code",
+  "login_btn": "Sign In",
+  "secure_connection": "Secure SSL Connection",
+  "encryption": "256-bit Encryption",
+  "hipaa": "HIPAA Certified",
+
+  "auth_error_title": "Authentication Error",
+  "auth_error_message": "Incorrect username or password!"
+}
