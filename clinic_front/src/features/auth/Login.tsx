@@ -1,15 +1,18 @@
+// src/features/auth/Login.tsx
 import { useState } from "react";
 import { Card, Form, Input, Select, Button, Typography } from "antd";
 import { useAuth } from "../../auth/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+type Role = "DIRECTION" | "SECRETAIRE" | "MEDECIN";
+
 export default function Login() {
   const { t, i18n } = useTranslation();
   const { login } = useAuth();
   const nav = useNavigate();
 
-  const [role, setRole] = useState<"DIRECTION" | "SECRETAIRE" | "MEDECIN">("SECRETAIRE");
+  const [role, setRole] = useState<Role>("SECRETAIRE");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -17,7 +20,8 @@ export default function Login() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      let payload: any = { username: vals.username, role };
+      // IMPORTANT : ne jamais trimmer le mot de passe
+      const payload: any = { username: (vals.username ?? "").trim(), role };
       if (role === "MEDECIN") {
         payload.code_personnel = vals.code_personnel;
       } else {
@@ -26,16 +30,12 @@ export default function Login() {
 
       await login(payload);
 
-      if (role === "MEDECIN") {
-        nav("/referrals/new");
-      } else if (role === "DIRECTION") {
-        nav("/dashboard");
-      } else {
-        nav("/appointments");
-      }
+      if (role === "MEDECIN") nav("/referrals/new");
+      else if (role === "DIRECTION") nav("/dashboard");
+      else nav("/appointments");
     } catch (e: any) {
-      console.error("❌ Erreur d’authentification :", e.response?.data || e.message);
-      setErrorMsg(t("auth_error_message")); // ✅ multilingue
+      console.error("❌ Erreur d’authentification :", e?.response?.data || e?.message);
+      setErrorMsg(t("auth_error_message"));
     } finally {
       setLoading(false);
     }
@@ -44,20 +44,22 @@ export default function Login() {
   return (
     <div
       style={{
-        display: "grid",
-        placeItems: "center",
         minHeight: "100vh",
         background: "#f8f9fa",
+        display: "grid",
+        placeItems: "center",
+        padding: "16px",
       }}
     >
       <Card
         style={{
-          width: 420,
+          width: "100%",
+          maxWidth: 420,            // ✅ responsive
           borderRadius: 12,
           boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
         }}
       >
-        {/* 🔹 Logo + titre */}
+        {/* Logo + titre */}
         <div style={{ textAlign: "center", marginBottom: 24 }}>
           <img
             src="/img/clinique-logo.png"
@@ -72,20 +74,15 @@ export default function Login() {
           <Typography.Text type="secondary">Casablanca, Maroc</Typography.Text>
         </div>
 
-        {/* 🔹 Texte de bienvenue */}
-        <Typography.Title
-          level={5}
-          style={{ textAlign: "center", marginBottom: 24 }}
-        >
+        {/* Welcome */}
+        <Typography.Title level={5} style={{ textAlign: "center", marginBottom: 12 }}>
           {t("welcome")}
         </Typography.Title>
-        <Typography.Paragraph
-          style={{ textAlign: "center", color: "#666", marginBottom: 32 }}
-        >
+        <Typography.Paragraph style={{ textAlign: "center", color: "#666", marginBottom: 24 }}>
           {t("welcome_subtitle")}
         </Typography.Paragraph>
 
-        {/* ✅ Box erreur multilingue stylée */}
+        {/* Erreur */}
         {errorMsg && (
           <div
             style={{
@@ -97,32 +94,15 @@ export default function Login() {
               display: "flex",
               alignItems: "center",
               gap: 10,
-              animation: "shake 0.3s ease-in-out", // petite animation
             }}
           >
-            <span
-              style={{
-                color: "#ff4d4f",
-                fontSize: 20,
-                fontWeight: "bold",
-              }}
-            >
-              ⚠️
-            </span>
-            <span
-              style={{
-                color: "#d93025",
-                fontWeight: 600,
-                fontSize: 15,
-              }}
-            >
-              {errorMsg}
-            </span>
+            <span style={{ color: "#ff4d4f", fontSize: 20, fontWeight: "bold" }}>⚠️</span>
+            <span style={{ color: "#d93025", fontWeight: 600, fontSize: 15 }}>{errorMsg}</span>
           </div>
         )}
 
-        {/* 🔹 Formulaire */}
-        <Form layout="vertical" onFinish={onFinish}>
+        {/* Form */}
+        <Form layout="vertical" onFinish={onFinish} autoComplete="on">
           <Form.Item name="role" label={t("role")} initialValue="SECRETAIRE">
             <Select
               options={[
@@ -130,25 +110,44 @@ export default function Login() {
                 { value: "SECRETAIRE", label: t("roles.secretaire") },
                 { value: "MEDECIN", label: t("roles.medecin") },
               ]}
-              onChange={(v) => setRole(v)}
+              onChange={(v) => setRole(v as Role)}
             />
           </Form.Item>
 
           <Form.Item
             name="username"
             label={t("username")}
-            rules={[{ required: true }]}
+            rules={[{ required: true, message: t("required") }]}
           >
-            <Input placeholder="votre.email@example.com" />
+            <Input
+              placeholder="votre.email@example.com"
+              // Mobile-safe
+              type="email"
+              inputMode="email"
+              autoComplete="username email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              style={{ fontSize: 16 }} // ✅ évite le zoom iOS
+            />
           </Form.Item>
 
           {role !== "MEDECIN" && (
             <Form.Item
               name="password"
               label={t("password")}
-              rules={[{ required: true }]}
+              rules={[{ required: true, message: t("required") }]}
             >
-              <Input.Password />
+              <Input.Password
+                placeholder="••••••••"
+                // Mobile-safe
+                autoComplete="current-password"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                style={{ fontSize: 16 }} // ✅ évite le zoom iOS
+                visibilityToggle
+              />
             </Form.Item>
           )}
 
@@ -156,9 +155,18 @@ export default function Login() {
             <Form.Item
               name="code_personnel"
               label={t("code")}
-              rules={[{ required: true }]}
+              rules={[{ required: true, message: t("required") }]}
             >
-              <Input />
+              <Input
+                placeholder="Code personnel"
+                // si c'est un code numérique: inputMode="numeric" pattern pour claviers mobiles
+                inputMode="text"
+                autoComplete="one-time-code"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                style={{ fontSize: 16 }} // ✅ évite le zoom iOS
+              />
             </Form.Item>
           )}
 
@@ -167,16 +175,16 @@ export default function Login() {
             htmlType="submit"
             block
             loading={loading}
-            style={{ marginTop: 12 }}
+            style={{ marginTop: 8 }}
           >
             {t("login_btn")}
           </Button>
         </Form>
 
-        {/* 🔹 Bloc SSL sécurisé */}
+        {/* Bloc SSL sécurisé */}
         <div
           style={{
-            marginTop: 24,
+            marginTop: 20,
             textAlign: "center",
             border: "1px solid #eaeaea",
             padding: 12,
@@ -194,13 +202,13 @@ export default function Login() {
           </Typography.Text>
         </div>
 
-        {/* 🔹 Langue */}
-        <div style={{ textAlign: "center", marginTop: 16 }}>
-          🌐 Langue:{" "}
+        {/* Langue */}
+        <div style={{ textAlign: "center", marginTop: 12 }}>
+          🌐 {t("language")}{" "}
           <Button type="link" size="small" onClick={() => i18n.changeLanguage("fr")}>
             FR
-          </Button>{" "}
-          |{" "}
+          </Button>
+          |
           <Button type="link" size="small" onClick={() => i18n.changeLanguage("en")}>
             EN
           </Button>
