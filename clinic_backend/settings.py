@@ -3,18 +3,19 @@ from pathlib import Path
 import os
 from datetime import timedelta
 from dotenv import load_dotenv
+import dj_database_url
 
 load_dotenv()
 
 # ── Bases ─────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent       # .../clinic_backend
-ROOT_DIR = BASE_DIR.parent                               # racine repo
+ROOT_DIR = BASE_DIR.parent                               # racine du repo
 
 DEBUG = os.getenv("DEBUG", "0") == "1"
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-prod")
 
 _raw_hosts = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
-ALLOWED_HOSTS = _raw_hosts if _raw_hosts else (["*"] if DEBUG else [])
+ALLOWED_HOSTS = _raw_hosts if _raw_hosts else (["*"] if DEBUG else ["localhost", "127.0.0.1"])
 
 # ── Apps ──────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
@@ -52,13 +53,13 @@ ROOT_URLCONF = "clinic_backend.urls"
 
 # ── Front (Vite build) + Templates ───────────────────────────────────
 # ton front est DANS clinic_backend/clinic_front
-FRONTEND_DIR    = BASE_DIR / "clinic_front"
-FRONTEND_DIST   = FRONTEND_DIR / "dist"        # contient index.html buildé
-FRONTEND_ASSETS = FRONTEND_DIST / "assets"     # contient JS/CSS
+FRONTEND_DIR  = BASE_DIR / "clinic_front"
+FRONTEND_DIST = FRONTEND_DIR / "dist"        # contient index.html buildé
+FRONTEND_ASSETS = FRONTEND_DIST / "assets"   # contient JS/CSS
 
 TEMPLATES = [{
     "BACKEND": "django.template.backends.django.DjangoTemplates",
-    "DIRS": [FRONTEND_DIST],                   # index.html du build Vite
+    "DIRS": [FRONTEND_DIST],                  # index.html du build Vite
     "APP_DIRS": True,
     "OPTIONS": {
         "context_processors": [
@@ -76,7 +77,6 @@ WSGI_APPLICATION = "clinic_backend.wsgi.application"
 DEFAULT_SQLITE_URL = f"sqlite:///{ROOT_DIR / 'db.sqlite3'}"
 DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_SQLITE_URL)
 
-import dj_database_url
 DATABASES = {
     "default": dj_database_url.parse(
         DATABASE_URL,
@@ -110,18 +110,31 @@ SPECTACULAR_SETTINGS = {
 
 # ── CORS / CSRF ──────────────────────────────────────────────────────
 CORS_ALLOW_CREDENTIALS = True
+
+DEV_CLIENTS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    # ajoute l'IP LAN de ton PC si tu testes sur téléphone :
+    # "http://192.168.1.50:5173",
+    # "http://192.168.1.50:8000",
+]
+
 if DEBUG:
+    # Dev : simplifier au max
     CORS_ALLOW_ALL_ORIGINS = True
+    CSRF_TRUSTED_ORIGINS = DEV_CLIENTS
 else:
     CORS_ALLOW_ALL_ORIGINS = False
     CORS_ALLOWED_ORIGINS = [
         o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()
     ]
-
-CSRF_TRUSTED_ORIGINS = [
-    o.strip().replace("http://", "https://")
-    for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()
-]
+    # En prod : forcer https dans la liste depuis l'env
+    CSRF_TRUSTED_ORIGINS = [
+        o.strip().replace("http://", "https://")
+        for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()
+    ]
 
 # ── i18n / Timezone ──────────────────────────────────────────────────
 LANGUAGE_CODE = "fr"
@@ -130,13 +143,20 @@ USE_I18N = True
 USE_TZ = True
 
 # ── Static & Media (WhiteNoise + Vite) ───────────────────────────────
-STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"     # sous clinic_backend/
+# IMPORTANT : STATIC_URL doit exister et finir par '/'
+STATIC_URL = os.getenv("STATIC_URL", "/static/")
+if not STATIC_URL.endswith("/"):
+    STATIC_URL += "/"
 
-# POINTER SUR LA RACINE DU BUILD (dist) pour servir /static/assets/* et /static/vite.svg
-STATICFILES_DIRS = [FRONTEND_DIST]
+STATIC_ROOT = BASE_DIR / "staticfiles"  # collecte en prod (collectstatic)
 
-# WhiteNoise : compression + manifest + finders
+# En dev, si le build Vite n’existe pas encore, évite d’ajouter un dossier inexistant
+if FRONTEND_DIST.exists():
+    STATICFILES_DIRS = [FRONTEND_DIST]
+else:
+    STATICFILES_DIRS = []  # pas de dossier inexistant
+
+# WhiteNoise (OK en prod, ne gêne pas en dev)
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 WHITENOISE_USE_FINDERS = True
 
@@ -149,8 +169,13 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+else:
+    # Dev : ne surtout pas forcer HTTPS
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 
-# # (Debug local des chemins : décommente si besoin)
+# (Optionnel) Debug des chemins :
+# print("DEBUG =", DEBUG)
 # print("FRONTEND_DIST ->", FRONTEND_DIST, "exists:", FRONTEND_DIST.exists())
-# print("INDEX ->", (FRONTEND_DIST / "index.html").exists())
-# print("ASSETS ->", FRONTEND_ASSETS.exists(), FRONTEND_ASSETS)
+# print("STATIC_URL =", STATIC_URL)
