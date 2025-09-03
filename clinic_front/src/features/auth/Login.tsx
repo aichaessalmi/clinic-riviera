@@ -61,11 +61,7 @@ export default function Login() {
       >
         {/* Logo + titre */}
         <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <img
-            src="/img/clinique-logo.png"
-            alt="logo"
-            style={{ width: 90, marginBottom: 12 }}
-          />
+          
           <Typography.Title level={4} style={{ margin: 0 }}>
             Clinique Riviera
           </Typography.Title>
