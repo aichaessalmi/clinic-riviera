@@ -1,42 +1,39 @@
-// src/App.tsx
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./auth/AuthContext";
-import { useAuth } from "./auth/AuthContext";
+import { AuthProvider, useAuth } from "./auth/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AppLayout from "./components/AppLayout";
 
 import Login from "./features/auth/Login";
-import AppointmentsPage from "./features/appointments/AppointmentsPage";
+
 import CalendarPage from "./features/appointments/CalendarPage";
 import NewReferral from "./features/referrals/NewReferral";
 import MyReferrals from "./features/referrals/MyReferrals";
-import StatsPage from "./features/direction/StatsPage";
-import DashboardPage from "./features/dashboard/DashboardPage";
-
-
 
 import NotificationsPage from "./features/notifications/NotificationsPage";
+import SecretaryDashboard from "./features/secretary/SecretaryDashboard";
+import Patients from "./features/secretary/Secretarypatients"; 
+import Patient from "./features/secretary/SecretaryAllreferals"; 
+import Appointments from "./features/appointments/AppointmentsPages"; 
+
+import Analytics from "./features/direction/statistique";
+import Referrals from "./features/direction/SupervisionReferences";
+
 function HomeRedirect() {
-  const { user } = useAuth() as { user?: { role?: string } };
-  if (user?.role === "MEDECIN") return <Navigate to="/referrals/mine" replace />;
-  if (user?.role === "DIRECTION" || user?.role === "SECRETAIRE")
-    return <Navigate to="/appointments" replace />;
+  const { role } = useAuth();
+  if (role === "MEDECIN") return <Navigate to="/referrals/mine" replace />;
+  if (role === "DIRECTION" || role === "SECRETAIRE") return <Navigate to="/dashboard" replace />;
   return <Navigate to="/login" replace />;
 }
 
-function NotFound() {
-  return <Navigate to="/" replace />;
-}
+function NotFound() { return <Navigate to="/" replace />; }
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* Auth */}
           <Route path="/login" element={<Login />} />
 
-          {/* Accueil -> redirect selon rôle */}
           <Route
             path="/"
             element={
@@ -48,44 +45,31 @@ export default function App() {
             }
           />
 
-          {/* Dashboard (Direction + Secrétaire) */}
+          {/* ✅ NOUVELLE route Dashboard cohérente */}
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute allow={["DIRECTION", "SECRETAIRE"]}>
                 <AppLayout>
-                  <DashboardPage />
+            <SecretaryDashboard />
                 </AppLayout>
               </ProtectedRoute>
             }
           />
 
-               <Route
-  path="/notifications"
-  element={
-    <ProtectedRoute allow={["MEDECIN","DIRECTION","SECRETAIRE"]}>
-      <AppLayout>
-        <NotificationsPage />
-      </AppLayout>
-    </ProtectedRoute>
-  }
-/>
-
-
-
-          {/* Rendez-vous (Direction + Secrétaire) */}
           <Route
-            path="/appointments"
+            path="/notifications"
             element={
-              <ProtectedRoute allow={["DIRECTION", "SECRETAIRE"]}>
+              <ProtectedRoute allow={["MEDECIN","DIRECTION","SECRETAIRE"]}>
                 <AppLayout>
-                  <AppointmentsPage />
+                  <NotificationsPage />
                 </AppLayout>
               </ProtectedRoute>
             }
           />
 
-          {/* Calendrier (Direction + Secrétaire) */}
+          
+
           <Route
             path="/calendar"
             element={
@@ -96,8 +80,36 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-
-          {/* Références Médecin */}
+<Route
+            path="/patients"
+            element={
+              <ProtectedRoute allow={["DIRECTION", "SECRETAIRE"]}>
+                <AppLayout>
+                  <Patients />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/Appointments"
+            element={
+              <ProtectedRoute allow={["DIRECTION", "SECRETAIRE"]}>
+                <AppLayout>
+                  <Appointments />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/patient"
+            element={
+              <ProtectedRoute allow={["DIRECTION", "SECRETAIRE"]}>
+                <AppLayout>
+                  <Patient />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/referrals/new"
             element={
@@ -119,19 +131,35 @@ export default function App() {
             }
           />
 
-          {/* Statistiques (Direction uniquement) */}
-          <Route
-            path="/stats"
+          
+ <Route
+            path="/analtycs"
             element={
               <ProtectedRoute allow={["DIRECTION"]}>
                 <AppLayout>
-                  <StatsPage />
+                  <Analytics />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          /> <Route
+            path="/Analytics"
+            element={
+              <ProtectedRoute allow={["DIRECTION"]}>
+                <AppLayout>
+                  <Analytics />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          /> <Route
+            path="/Referrals"
+            element={
+              <ProtectedRoute allow={["DIRECTION"]}>
+                <AppLayout>
+                  <Referrals />
                 </AppLayout>
               </ProtectedRoute>
             }
           />
-
-          {/* 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AuthProvider>

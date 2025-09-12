@@ -1,62 +1,79 @@
-/* 1) Toujours d'abord Tailwind */
+/* Tailwind directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* 2) Tes réglages globaux (facultatifs, légers) */
-:root {
-  /* Laisse Tailwind gérer la plupart des styles ; ne force pas le dark par défaut */
-  color-scheme: light;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* —— Globaux légers —— */
+:root { color-scheme: light; text-rendering: optimizeLegibility; }
+body { margin:0; min-width:320px; min-height:100vh; background:#f8fafc; color:#0f172a; font-family: system-ui, Avenir, Helvetica, Arial, sans-serif; }
+.no-scrollbar::-webkit-scrollbar{display:none;} .no-scrollbar{-ms-overflow-style:none; scrollbar-width:none;}
+
+/* ——— Layout calendrier (2 colonnes desktop) ——— */
+.calendar-shell{
+  display:grid;
+  grid-template-columns: 260px minmax(0,1fr);  /* 260px fixe + reste fluide */
+  gap: 1rem;
+}
+@media (max-width: 1023.98px){
+  .calendar-shell{ grid-template-columns: 1fr; }
 }
 
-/* 3) Style global de body : évite le flex/centrage qui “casse” les layouts Tailwind */
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background: #fff;        /* ou laisse Tailwind via classe bg-... sur ta page */
-  color: #111827;          /* (= gray-900) ; sinon supprime et utilise les classes Tailwind */
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+/* Sidebar fixe gauche + sticky sous ton header */
+.sidebar {
+  width: 260px;
+}
+.sidebar-sticky{
+  position: sticky;
+  top: 72px;                     /* ajuste selon la hauteur de ton header */
+  align-self: start;
 }
 
-/* 4) Liens par défaut (facultatif) */
-a {
-  color: #4f46e5;          /* indigo-600 */
-  text-decoration: none;
-}
-a:hover {
-  color: #4338ca;          /* indigo-700 */
+/* ——— FullCalendar : occupe 100% sans forcer de min-width ——— */
+.fc{ width:100% !important; }
+.fc .fc-view-harness, .fc .fc-scrollgrid{ width:100% !important; }
+
+/* Lisibilité basique */
+.fc .fc-toolbar-title{ font-weight:600; color:#0f172a; }
+.fc .fc-daygrid-event{ border:0; padding:0; }
+
+/* ——— Mini-calendrier (react-day-picker) look simple ——— */
+.rdp{ --rdp-accent-color:#2563eb; font-size:14px; width:100%; max-width:260px; margin:0 auto; }
+.rdp-month{ margin:0; }
+.rdp-caption_label{ color:#0f172a; font-weight:600; font-size:14px; }
+.rdp-head_cell{ color:#2563eb !important; font-weight:600; font-size:12px; }
+.rdp-day{ border-radius:.5rem; padding:.35em; margin:.15em; font-weight:500; transition:background .15s; }
+.rdp-day:hover{ background:#f1f5f9; }
+.rdp-day_selected,.rdp-day_selected:focus{ background:#2563eb !important; color:#fff !important; }
+.rdp-day_today:not(.rdp-day_selected){ border:1.5px solid #2563eb !important; background:#eef2ff !important; color:#1d4ed8 !important; }
+
+.sidebar-card{
+  border:1px solid #e5e7eb; border-radius:12px; background:#fff; padding:1rem;
 }
 
-/* 5) Boutons par défaut (facultatif) — sinon, utilise les classes Tailwind */
-button {
-  border-radius: 0.5rem;   /* rounded-lg */
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font: inherit;
-  background: #111827;     /* gray-900 */
-  color: #fff;
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-button:hover {
-  border-color: #4f46e5;   /* indigo-600 */
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+/* Impression simple */
+@media print{ .no-print{display:none !important;} body{background:#fff;} }
+/* ==== FullCalendar: mobile-friendly ==== */
+/* supprime toute min-width résiduelle */
+.fc,
+.fc .fc-view-harness,
+.fc .fc-scrollgrid { min-width: 0 !important; width: 100% !important; }
+
+/* taille de police & slots plus compacts sur mobile */
+@media (max-width: 768px){
+  .fc { font-size: 12px; }
+  .fc .fc-timegrid-slot { height: 2.25rem; } /* ~36px par slot */
+  .fc .fc-timegrid-axis-cushion,
+  .fc .fc-timegrid-slot-label { font-size: 12px; }
+  .fc .fc-col-header-cell-cushion { padding: 6px 4px; }
+  .fc .fc-daygrid-day-number { padding: 2px 4px; font-size: 12px; }
+  .fc .fc-daygrid-event { padding: 0 2px; }
+  /* pas de toolbar FC (tu utilises la tienne) */
+  .fc .fc-header-toolbar { display: none !important; }
 }
 
-/* 6) Option light/dark auto (si tu veux) */
-@media (prefers-color-scheme: dark) {
-  :root { color-scheme: dark; }
-  body  { background: #0b0f19; color: #e5e7eb; } /* slate-900 / gray-200 */
-}
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+/* évite le scroll horizontal parasite */
+.fc .fc-scroller,
+.fc .fc-scroller-harness { overflow-x: hidden !important; }
+
+/* le conteneur qui entoure FullCalendar doit pouvoir rétrécir */
+.fc-card-fix { min-width: 0; overflow: hidden; }
