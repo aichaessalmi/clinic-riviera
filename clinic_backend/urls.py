@@ -15,6 +15,7 @@ urlpatterns = [
     path("api/", include("accounts.urls")),
     path("api/appointments/", include("appointments.urls")),
     path("api/referrals/", include("referrals.urls")),
+    path('api/whatsapp/', include('whatsapp.urls')),
 
     # 👇 Catch-all: toute route qui ne commence PAS par /api/ renvoie index.html
     re_path(r"^(?!api/).*$", TemplateView.as_view(template_name="index.html")),

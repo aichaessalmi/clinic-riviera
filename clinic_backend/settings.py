@@ -6,6 +6,10 @@ from dotenv import load_dotenv
 import dj_database_url
 
 load_dotenv()
+# settings.py
+TWILIO_ACCOUNT_SID = "US6daac7a4ceb9b44f133a3e4fa53e5782"
+TWILIO_AUTH_TOKEN = "QPZA55V9VCMJGQDDHGGLRB8L"
+TWILIO_WHATSAPP_NUMBER = "whatsapp:+14155238886"  # numéro sandbox Twilio
 
 # ── Bases ─────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent       # .../clinic_backend
@@ -34,6 +38,7 @@ INSTALLED_APPS = [
     "accounts",
     "appointments",
     "referrals",
+    "whatsapp",
 ]
 
 # ── Middleware ────────────────────────────────────────────────────────

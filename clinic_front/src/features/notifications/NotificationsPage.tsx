@@ -12,7 +12,7 @@ type Room = {
   patient?: string;
 };
 
-type ArrivalNotif = {
+export type ArrivalNotif = {
   id: string;
   status: NotifStatus;
   patient: string;
@@ -42,7 +42,7 @@ const ROOMS_MOCK: Room[] = [
 ];
 
 const NOW = Date.now();
-const NOTIFS_MOCK: ArrivalNotif[] = [
+export const NOTIFS_MOCK: ArrivalNotif[] = [
   {
     id: "n1",
     status: "new",
@@ -151,21 +151,12 @@ export default function ArrivalNotificationsPage() {
   const [items, setItems] = useState<ArrivalNotif[]>(NOTIFS_MOCK);
   const [live, setLive] = useState(true);
   const [tab, setTab] = useState<"live" | "history">("live");
-
   const [selected, setSelected] = useState<ArrivalNotif | null>(null);
-
-  const stats = useMemo(() => {
-    const newCount = items.filter((n) => n.status === "new").length;
-    const arrivalsToday = items.length + 9;
-    const occupied = rooms.filter((r) => r.status === "Occupée").length;
-    const avgWait = 18;
-    return { newCount, arrivalsToday, occupied, avgWait };
-  }, [items, rooms]);
 
   useEffect(() => {
     if (!live) return;
     const id = setInterval(() => {
-      // refresh backend ici
+      // TODO: refresh backend ici
     }, 15000);
     return () => clearInterval(id);
   }, [live]);
@@ -219,14 +210,6 @@ export default function ArrivalNotificationsPage() {
             Tout marquer comme lu
           </button>
         </div>
-      </div>
-
-      {/* Stat cards — 1 col mobile, 2 col ≥sm, 4 col ≥md */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard title="Nouvelles notifications" value={stats.newCount} trend="+5%" dotCls="bg-emerald-500" />
-        <StatCard title="Patients arrivés aujourd’hui" value={stats.arrivalsToday} trend="+8%" dotCls="bg-emerald-500" />
-        <StatCard title="Salles occupées" value={stats.occupied} trend="-2%" dotCls="bg-rose-500" />
-        <StatCard title="Temps d’attente moyen" value={`${stats.avgWait} min`} trend="-5%" dotCls="bg-rose-500" />
       </div>
 
       {/* Rooms — cartes plus grandes, grille responsive */}
@@ -480,31 +463,6 @@ export default function ArrivalNotificationsPage() {
 }
 
 /* ===================== Petits composants UI ===================== */
-function StatCard({
-  title,
-  value,
-  trend,
-  dotCls,
-}: {
-  title: string;
-  value: string | number;
-  trend?: string;
-  dotCls?: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm">
-      <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500">
-        <div className="inline-flex items-center gap-2">
-          {dot(dotCls ?? "bg-slate-400")}
-          <span>{title}</span>
-        </div>
-        {trend && <span className="font-medium text-emerald-600">{trend}</span>}
-      </div>
-      <div className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-bold text-slate-900">{value}</div>
-    </div>
-  );
-}
-
 function TabButton({
   active,
   onClick,

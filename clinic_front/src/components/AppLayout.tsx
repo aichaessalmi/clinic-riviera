@@ -3,6 +3,9 @@ import React, { useState } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
+// src/components/AppLayout.tsx
+// src/components/AppLayout.tsx
+import NotificationBellMenu from "./NotificationBellMenu";
 
 type Role = "DIRECTION" | "SECRETAIRE" | "MEDECIN";
 
@@ -45,7 +48,7 @@ function TopNavLink({
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { role, logout, ready } = useAuth();            // ✅ on récupère ready
+  const { role, logout, ready } = useAuth();
   const { i18n } = useTranslation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -54,21 +57,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { key: "dashboard", to: "/dashboard", label: "Dashboard", showFor: ["DIRECTION", "SECRETAIRE"] },
     { key: "my_refs", to: "/referrals/mine", label: "Referrals", showFor: ["MEDECIN"] },
     { key: "new_ref", to: "/referrals/new", label: "+ New Referral", primary: true, showFor: ["MEDECIN"] },
-    { key: "notif", to: "/notifications", label: "Notifications", showFor: ["MEDECIN","DIRECTION","SECRETAIRE"] },
+    { key: "notif", to: "/notifications", label: "Notifications", showFor: ["MEDECIN"] },
     { key: "cal", to: "/calendar", label: "Calendar", showFor: ["DIRECTION", "SECRETAIRE"] },
+
+    { key: "patients_reg", to: "/patients", label: "WhatsApp Reminders", showFor: ["DIRECTION", "SECRETAIRE"] },
+    { key: "referrals_sec", to: "/patient", label: "Referrals", showFor: ["SECRETAIRE","DIRECTION"] },
+
+    { key: "appointments", to: "/Appointments", label: "Appointments History", showFor: ["DIRECTION", "SECRETAIRE"] },
+    { key: "analytics", to: "/Analytics", label: "Analytics", showFor: ["DIRECTION"] },
     
-    { key: "patients", to: "/patients", label: "Patient Registry", showFor: ["DIRECTION", "SECRETAIRE"] },
-    { key: "patients", to: "/patient", label: "Referrals", showFor: ["SECRETAIRE"] },
-    { key: "Appointments", to: "/Appointments", label: "Appointments", showFor: ["DIRECTION", "SECRETAIRE"] },
-   
-    { key: "Analytics", to: "/Analytics", label: "Analytics", showFor: ["DIRECTION"] },
-    { key: "Referrals", to: "/Referrals", label: "Referrals", showFor: ["DIRECTION"] },
+     { key: "Profile", to: "/Profile", label: "Profil", showFor: ["MEDECIN"] },
+     { key: "ProfileSEC", to: "/ProfileSEC", label: "Profil", showFor: ["SECRETAIRE"] },
+     { key: "ProfileDIR", to: "/ProfileDIR", label: "Profil", showFor: ["DIRECTION"] },
+
+
   ];
 
-  // ✅ Tant que role n’est pas connu, on ne propose rien (évite les clics “interdits”)
   const items: NavItem[] = role ? allItems.filter(it => it.showFor?.includes(role)) : [];
 
-  // ✅ Pendant l’hydratation, afficher un header minimal
+  // Qui voit la cloche ? (comme l’onglet Notifications)
+  const canSeeBell = !!role && ["MEDECIN"].includes(role);
+
   if (!ready) {
     return (
       <div className="min-h-screen bg-slate-50">
@@ -111,8 +120,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
 
-          {/* Actions droites */}
+          {/* Actions droites (desktop) */}
           <div className="hidden md:flex items-center gap-2">
+            {/* ⬇️ NEW: cloche notifications avec mini-panneau */}
+            {canSeeBell && <NotificationBellMenu toAllUrl="/notifications" />}
+
             <button
               onClick={() => i18n.changeLanguage(i18n.language === "fr" ? "en" : "fr")}
               className="rounded-lg border border-blue-600 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50"
@@ -146,15 +158,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {open && (
           <div className="md:hidden border-t border-slate-200 bg-white">
             <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3">
+              {/* ⬇️ NEW: cloche dans le menu mobile */}
+              {canSeeBell && (
+                <div className="mb-2">
+                  <NotificationBellMenu toAllUrl="/notifications" />
+                </div>
+              )}
+
               {items.map((it) => (
                 <TopNavLink
                   key={it.key}
                   to={it.to}
                   label={it.label}
                   primary={it.primary}
-                  onClick={() => setOpen(false)}      // ✅ fermer après clic
+                  onClick={() => setOpen(false)}
                 />
               ))}
+
               <div className="mt-2 flex items-center gap-2">
                 <button
                   onClick={() => i18n.changeLanguage(i18n.language === "fr" ? "en" : "fr")}

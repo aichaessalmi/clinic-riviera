@@ -11,13 +11,15 @@ import MyReferrals from "./features/referrals/MyReferrals";
 
 import NotificationsPage from "./features/notifications/NotificationsPage";
 import SecretaryDashboard from "./features/secretary/SecretaryDashboard";
-import Patients from "./features/secretary/Secretarypatients"; 
+import Patients from "./features/secretary/WhatsApp Reminders"; 
 import Patient from "./features/secretary/SecretaryAllreferals"; 
 import Appointments from "./features/appointments/AppointmentsPages"; 
 
 import Analytics from "./features/direction/statistique";
 import Referrals from "./features/direction/SupervisionReferences";
-
+import Profile from "./features/setting/medecin";
+import ProfileSEC from "./features/setting/Secrétaireprofile";
+import ProfileDir from "./features/setting/DirectionAdminPage";
 function HomeRedirect() {
   const { role } = useAuth();
   if (role === "MEDECIN") return <Navigate to="/referrals/mine" replace />;
@@ -60,7 +62,7 @@ export default function App() {
           <Route
             path="/notifications"
             element={
-              <ProtectedRoute allow={["MEDECIN","DIRECTION","SECRETAIRE"]}>
+              <ProtectedRoute allow={["MEDECIN"]}>
                 <AppLayout>
                   <NotificationsPage />
                 </AppLayout>
@@ -156,6 +158,36 @@ export default function App() {
               <ProtectedRoute allow={["DIRECTION"]}>
                 <AppLayout>
                   <Referrals />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ProfileSEC"
+            element={
+              <ProtectedRoute allow={["SECRETAIRE"]}>
+                <AppLayout>
+                  <ProfileSEC />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+         <Route
+            path="/Profile"
+            element={
+              <ProtectedRoute allow={["MEDECIN"]}>
+                <AppLayout>
+                  <Profile />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+ <Route
+            path="/ProfileDir"
+            element={
+              <ProtectedRoute allow={["DIRECTION"]}>
+                <AppLayout>
+                  <ProfileDir />
                 </AppLayout>
               </ProtectedRoute>
             }
