@@ -3,8 +3,6 @@ import React, { useState } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
-// src/components/AppLayout.tsx
-// src/components/AppLayout.tsx
 import NotificationBellMenu from "./NotificationBellMenu";
 
 type Role = "DIRECTION" | "SECRETAIRE" | "MEDECIN";
@@ -49,28 +47,27 @@ function TopNavLink({
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { role, logout, ready } = useAuth();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation(); // default namespace or multiple namespaces loaded in i18n init
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
+  // Items defined after hook so we can use t() for labels (updates on language change)
   const allItems: NavItem[] = [
-    { key: "dashboard", to: "/dashboard", label: "Dashboard", showFor: ["DIRECTION", "SECRETAIRE"] },
-    { key: "my_refs", to: "/referrals/mine", label: "Referrals", showFor: ["MEDECIN"] },
-    { key: "new_ref", to: "/referrals/new", label: "+ New Referral", primary: true, showFor: ["MEDECIN"] },
-    { key: "notif", to: "/notifications", label: "Notifications", showFor: ["MEDECIN"] },
-    { key: "cal", to: "/calendar", label: "Calendar", showFor: ["DIRECTION", "SECRETAIRE"] },
+    { key: "dashboard", to: "/dashboard", label: t("header.dashboard"), showFor: ["DIRECTION", "SECRETAIRE"] },
+    { key: "my_refs", to: "/referrals/mine", label: t("header.referrals"), showFor: ["MEDECIN"] },
+    { key: "new_ref", to: "/referrals/new", label: t("header.new_ref"), primary: true, showFor: ["MEDECIN"] },
+    { key: "notif", to: "/notifications", label: t("header.notifications"), showFor: ["MEDECIN"] },
+    { key: "cal", to: "/calendar", label: t("header.calendar"), showFor: ["DIRECTION", "SECRETAIRE"] },
 
-    { key: "patients_reg", to: "/patients", label: "WhatsApp Reminders", showFor: ["DIRECTION", "SECRETAIRE"] },
-    { key: "referrals_sec", to: "/patient", label: "Referrals", showFor: ["SECRETAIRE","DIRECTION"] },
+    { key: "patients_reg", to: "/patients", label: t("header.whatsapp_reminders"), showFor: ["DIRECTION", "SECRETAIRE"] },
+    { key: "referrals_sec", to: "/patient", label: t("header.referrals"), showFor: ["SECRETAIRE","DIRECTION"] },
 
-    { key: "appointments", to: "/Appointments", label: "Appointments History", showFor: ["DIRECTION", "SECRETAIRE"] },
-    { key: "analytics", to: "/Analytics", label: "Analytics", showFor: ["DIRECTION"] },
-    
-     { key: "Profile", to: "/Profile", label: "Profil", showFor: ["MEDECIN"] },
-     { key: "ProfileSEC", to: "/ProfileSEC", label: "Profil", showFor: ["SECRETAIRE"] },
-     { key: "ProfileDIR", to: "/ProfileDIR", label: "Profil", showFor: ["DIRECTION"] },
+    { key: "appointments", to: "/Appointments", label: t("header.appointments_history"), showFor: ["DIRECTION", "SECRETAIRE"] },
+    { key: "analytics", to: "/Analytics", label: t("header.analytics"), showFor: ["DIRECTION"] },
 
-
+    { key: "Profile", to: "/Profile", label: t("header.profile"), showFor: ["MEDECIN"] },
+    { key: "ProfileSEC", to: "/ProfileSEC", label: t("header.profile"), showFor: ["SECRETAIRE"] },
+    { key: "ProfileDIR", to: "/ProfileDIR", label: t("header.profile"), showFor: ["DIRECTION"] },
   ];
 
   const items: NavItem[] = role ? allItems.filter(it => it.showFor?.includes(role)) : [];
@@ -122,7 +119,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Actions droites (desktop) */}
           <div className="hidden md:flex items-center gap-2">
-            {/* ⬇️ NEW: cloche notifications avec mini-panneau */}
             {canSeeBell && <NotificationBellMenu toAllUrl="/notifications" />}
 
             <button
@@ -138,7 +134,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               }}
               className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-red-700"
             >
-              Logout
+              {t("header.logout")}
             </button>
           </div>
 
@@ -146,7 +142,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <button
             onClick={() => setOpen((v) => !v)}
             className="md:hidden rounded-lg border border-slate-200 p-2 text-slate-700 hover:bg-slate-100"
-            aria-label="Open menu"
+            aria-label={t("header.open_menu")}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -158,7 +154,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {open && (
           <div className="md:hidden border-t border-slate-200 bg-white">
             <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3">
-              {/* ⬇️ NEW: cloche dans le menu mobile */}
               {canSeeBell && (
                 <div className="mb-2">
                   <NotificationBellMenu toAllUrl="/notifications" />
@@ -190,7 +185,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   }}
                   className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-red-700"
                 >
-                  Logout
+                  {t("header.logout")}
                 </button>
               </div>
             </div>

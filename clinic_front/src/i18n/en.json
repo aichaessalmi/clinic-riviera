@@ -15,7 +15,18 @@
   "secure_connection": "Secure SSL Connection",
   "encryption": "256-bit Encryption",
   "hipaa": "HIPAA Certified",
-
   "auth_error_title": "Authentication Error",
-  "auth_error_message": "Incorrect username or password!"
+  "auth_error_message": "Incorrect username or password!",
+  "brand_name": "Riviera Clinic",
+  "dashboard": "Dashboard",
+  "referrals": "Referrals",
+  "new_ref": "+ New Referral",
+  "notifications": "Notifications",
+  "calendar": "Calendar",
+  "whatsapp_reminders": "WhatsApp Reminders",
+  "appointments_history": "Appointments History",
+  "analytics": "Analytics",
+  "profile": "Profile",
+  "logout": "Logout",
+  "open_menu": "Open menu"
 }

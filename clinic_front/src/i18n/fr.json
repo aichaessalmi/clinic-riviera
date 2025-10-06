@@ -15,5 +15,17 @@
   "secure_connection": "Connexion sécurisée SSL",
   "encryption": "Chiffrement 256 bits",
   "hipaa": "Certifié HIPAA",
-  "auth_error_message": "❌ Nom d’utilisateur ou mot de passe incorrect !"
+  "auth_error_message": "❌ Nom d’utilisateur ou mot de passe incorrect !",
+  "brand_name": "Clinique Riviera",
+  "dashboard": "Tableau de bord",
+  "referrals": "Références",
+  "new_ref": "+ Nouvelle référence",
+  "notifications": "Notifications",
+  "calendar": "Calendrier",
+  "whatsapp_reminders": "Rappels WhatsApp",
+  "appointments_history": "Historique des rendez-vous",
+  "analytics": "Analytique",
+  "profile": "Profil",
+  "logout": "Se déconnecter",
+  "open_menu": "Ouvrir le menu"
 }
