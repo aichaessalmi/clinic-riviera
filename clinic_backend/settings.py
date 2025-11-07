@@ -109,6 +109,7 @@ TEMPLATES = [{
 WSGI_APPLICATION = "clinic_backend.wsgi.application"
 
 # ── Base de données ──────────────────────────────────────────────────
+<<<<<<< HEAD
 # (Tu as demandé SQLite uniquement, même sur Render)
 DATABASES = {
     "default": {
@@ -118,6 +119,36 @@ DATABASES = {
 }
 
 # ── DRF / Auth / Pagination / Filtres ────────────────────────────────
+=======
+from dj_database_url import parse as dburl
+
+DEFAULT_SQLITE_URL = f"sqlite:///{ROOT_DIR / 'db.sqlite3'}"
+DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_SQLITE_URL)
+
+DATABASES = {
+    "default": dburl(
+        DATABASE_URL,
+        conn_max_age=600,
+        ssl_require=("postgres" in DATABASE_URL or "postgresql" in DATABASE_URL),
+    )
+}
+
+# Si PostgreSQL → options SSL & keepalive pour Render
+if "postgres" in DATABASE_URL or "postgresql" in DATABASE_URL:
+    DATABASES["default"].setdefault("OPTIONS", {})
+    DATABASES["default"]["OPTIONS"]["sslmode"] = "require"
+    DATABASES["default"]["OPTIONS"].update({
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5,
+    })
+
+
+# ── Auth / DRF / JWT / Swagger ───────────────────────────────────────
+AUTH_USER_MODEL = "accounts.User"
+
+>>>>>>> 33d1b5f9495d525045b8c956b4210926b06be325
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
