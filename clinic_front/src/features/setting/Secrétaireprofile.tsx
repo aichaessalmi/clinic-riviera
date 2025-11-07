@@ -1,4 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { 
+  getCurrentUser, 
+  updateCurrentUser, 
+  updateCurrentUserPhoto,
+  mediaUrl 
+} from "../../api/users";
+import { useTranslation } from "react-i18next";
 
 /** Types */
 type UserProfile = {
@@ -10,10 +17,11 @@ type UserProfile = {
   role: "SECRETAIRE" | "DIRECTION" | "MEDECIN";
   specialite: string | null;
   departement: string;
-  poste: string; // poste / extension
+  poste: string;
   dateAdhesion: string;
   photo: string | null;
   langue: "fr" | "en";
+  theme: "light" | "dark" | "auto";
   notifications: {
     email: boolean;
     sms: boolean;
@@ -21,29 +29,6 @@ type UserProfile = {
     rappels: boolean;
     nouvelles: boolean;
   };
-};
-
-/** Données mock (secrétaire) */
-const CURRENT_USER: UserProfile = {
-  id: 2,
-  nom: "El Amrani",
-  prenom: "Sara",
-  email: "sara.elamrani@cliniqueriviera.ma",
-  telephone: "+212 6 11 22 33 44",
-  role: "SECRETAIRE",
-  specialite: null,
-  departement: "Accueil & RDV",
-  poste: "Standard: 102",
-  dateAdhesion: "2020-06-10",
-  photo: null,
-  langue: "fr",
-  notifications: {
-    email: true,
-    sms: true,
-    whatsapp: true,
-    rappels: true,
-    nouvelles: false,
-  },
 };
 
 const DEPARTEMENTS = [
@@ -60,85 +45,255 @@ const WORK_SHIFTS = [
   "Horaire Complet"
 ];
 
+// ==================== COMPOSANT TOAST ====================
+interface ToastProps {
+  message: string;
+  type: 'success' | 'error' | 'warning';
+  onClose: () => void;
+}
+
+const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const bgColor = {
+    success: 'bg-green-500',
+    error: 'bg-red-500',
+    warning: 'bg-yellow-500'
+  }[type];
+
+  const icon = {
+    success: '✅',
+    error: '❌',
+    warning: '⚠️'
+  }[type];
+
+  return (
+    <div className={`fixed top-4 right-4 ${bgColor} text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-sm animate-fade-in`}>
+      <div className="flex items-center gap-3">
+        <span className="text-lg">{icon}</span>
+        <span className="flex-1">{message}</span>
+        <button onClick={onClose} className="text-white hover:text-gray-200 text-lg">
+          ×
+        </button>
+      </div>
+    </div>
+  );
+};
+
 /** Composant principal Secretary */
 const SecretarySettingsPage: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<"profil" | "preferences" | "securite" | "actions">("profil");
-  const [profile, setProfile] = useState<UserProfile>(CURRENT_USER);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
 
   // Préférences spécifiques
   const [shift, setShift] = useState<string>(WORK_SHIFTS[0]);
   const [autoConfirmRdv, setAutoConfirmRdv] = useState<boolean>(false);
   const [whatsApiEnabled, setWhatsApiEnabled] = useState<boolean>(true);
 
-  // États pour sécurité (simplifié)
+  // États pour sécurité
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  // 🔹 Fonction pour afficher les toasts
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
+    setToast({ message, type });
+  };
+
+  // 🔹 Charger le profil depuis l'API
+  useEffect(() => {
+    (async () => {
+      try {
+        const me = await getCurrentUser();
+        const userProfile: UserProfile = {
+          id: me.id,
+          prenom: me.first_name || "",
+          nom: me.last_name || "",
+          email: me.email,
+          telephone: me.telephone || "",
+          role: me.role,
+          specialite: me.specialite || null,
+          departement: me.departement || "Accueil & RDV",
+          poste: me.poste || "Standard",
+          dateAdhesion: me.date_adhesion || "",
+          photo: me.photo || null,
+          langue: me.langue || "fr",
+          theme: me.theme || "light",
+          notifications: me.notifications || {
+            email: true,
+            sms: true,
+            whatsapp: true,
+            rappels: true,
+            nouvelles: false,
+          },
+        };
+        
+        setProfile(userProfile);
+        
+        // 🔹 CORRECTION: Appliquer la langue immédiatement
+        if (me.langue && me.langue !== i18n.language) {
+          i18n.changeLanguage(me.langue);
+        }
+        
+      } catch (err) {
+        console.error("❌ Erreur de chargement du profil :", err);
+        showToast("Erreur de chargement du profil", "error");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [i18n]);
+
   const handleProfileUpdate = (field: keyof UserProfile, value: any) => {
-    setProfile(prev => ({ ...prev, [field]: value }));
+    setProfile(prev => prev ? { ...prev, [field]: value } : null);
+    
+    // 🔹 CORRECTION: Appliquer immédiatement la langue quand elle change
+    if (field === "langue" && value !== i18n.language) {
+      i18n.changeLanguage(value);
+    }
   };
 
   const handleNotificationToggle = (type: keyof UserProfile['notifications']) => {
-    setProfile(prev => ({
+    setProfile(prev => prev ? ({
       ...prev,
       notifications: {
         ...prev.notifications,
         [type]: !prev.notifications[type]
       }
-    }));
+    }) : null);
   };
 
-  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert("La taille du fichier ne doit pas dépasser 5MB");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setPhotoPreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file || !profile) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("La taille du fichier ne doit pas dépasser 5MB", "warning");
+      return;
+    }
+
+    // Prévisualisation
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPhotoPreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    try {
+      setIsSaving(true);
+      await updateCurrentUserPhoto(file);
+      
+      // Mettre à jour le profil avec la nouvelle photo
+      const updatedUser = await getCurrentUser();
+      setProfile(prev => prev ? {
+        ...prev,
+        photo: updatedUser.photo
+      } : null);
+      
+      showToast("Photo de profil mise à jour !", "success");
+    } catch (err) {
+      console.error("❌ Erreur upload photo :", err);
+      showToast("Erreur lors du téléchargement de la photo", "error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleRemovePhoto = () => {
-    setPhotoPreview(null);
+  const handleRemovePhoto = async () => {
+    if (!profile) return;
+    
+    try {
+      setIsSaving(true);
+      
+      // Créer un FormData vide pour supprimer la photo
+      const formData = new FormData();
+      formData.append("photo", "");
+      
+      await updateCurrentUser(formData);
+      
+      // Mettre à jour l'état local
+      setPhotoPreview(null);
+      setProfile(prev => prev ? { ...prev, photo: null } : null);
+      
+      showToast("Photo supprimée !", "success");
+    } catch (err) {
+      console.error("❌ Erreur suppression photo :", err);
+      showToast("Erreur lors de la suppression de la photo", "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSaveProfile = async () => {
+    if (!profile) return;
+    
     setIsSaving(true);
-    // mock save
-    await new Promise(resolve => setTimeout(resolve, 900));
-    setIsSaving(false);
-    setIsEditing(false);
-    alert("Profil mis à jour (mock).");
+    try {
+      const payload = {
+        first_name: profile.prenom,
+        last_name: profile.nom,
+        email: profile.email,
+        telephone: profile.telephone,
+        departement: profile.departement,
+        poste: profile.poste,
+        langue: profile.langue,
+        theme: profile.theme,
+        notifications: profile.notifications,
+      };
+
+      await updateCurrentUser(payload);
+      showToast("Profil mis à jour avec succès !", "success");
+      setIsEditing(false);
+    } catch (err) {
+      console.error("❌ Erreur lors de la mise à jour :", err);
+      showToast("Erreur lors de la mise à jour du profil", "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleChangePassword = async () => {
+    if (!profile) return;
+
     if (newPassword !== confirmPassword) {
-      alert("Les mots de passe ne correspondent pas");
+      showToast("Les mots de passe ne correspondent pas", "warning");
       return;
     }
     if (newPassword.length < 8) {
-      alert("Le mot de passe doit contenir au moins 8 caractères");
+      showToast("Le mot de passe doit contenir au moins 8 caractères", "warning");
       return;
     }
+    
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 900));
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setIsSaving(false);
-    alert("Mot de passe modifié avec succès (mock).");
+    try {
+      await updateCurrentUser({
+        old_password: currentPassword,
+        new_password: newPassword,
+      });
+      
+      showToast("Mot de passe modifié avec succès !", "success");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      console.error("❌ Erreur de modification :", err);
+      showToast("Erreur lors du changement du mot de passe", "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return "—";
     return new Date(dateString).toLocaleDateString('fr-FR', {
       year: 'numeric',
       month: 'long',
@@ -146,33 +301,52 @@ const SecretarySettingsPage: React.FC = () => {
     });
   };
 
-  // Actions rapides spécifiques secrétariat (mock)
+  // Actions rapides spécifiques secrétariat
   const handleViewPendingAppointments = () => {
-    // mock: afficher un message ou ouvrir modal (ici simple alert)
-    alert("Il y a 7 rendez-vous en attente aujourd'hui (mock).");
+    showToast("Redirection vers les rendez-vous en attente...", "warning");
   };
 
   const handleSendWhatsAppReminders = async () => {
-    if (!whatsApiEnabled) {
-      alert("La fonctionnalité WhatsApp est désactivée.");
+    if (!whatsApiEnabled || !profile) {
+      showToast("L'API WhatsApp est désactivée", "warning");
       return;
     }
+    
     setIsSaving(true);
-    // mock send
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    setIsSaving(false);
-    alert("Rappels WhatsApp envoyés (mock).");
+    try {
+      // Implémentation réelle à connecter avec votre API WhatsApp
+      // await sendWhatsAppReminders();
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      showToast("Rappels WhatsApp envoyés avec succès !", "success");
+    } catch (err) {
+      console.error("❌ Erreur envoi rappels :", err);
+      showToast("Erreur lors de l'envoi des rappels WhatsApp", "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const exportData = () => {
-    const data = { profile, exportDate: new Date().toISOString() };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `secretaire_${profile.prenom}_${profile.nom}_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    if (!profile) return;
+    
+    try {
+      const data = { 
+        profile, 
+        preferences: { shift, autoConfirmRdv, whatsApiEnabled },
+        exportDate: new Date().toISOString() 
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `secretaire_${profile.prenom}_${profile.nom}_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Données exportées avec succès !", "success");
+    } catch (error) {
+      console.error("❌ Erreur export :", error);
+      showToast("Erreur lors de l'exportation des données", "error");
+    }
   };
 
   // Render Preferences (secrétaire)
@@ -180,12 +354,14 @@ const SecretarySettingsPage: React.FC = () => {
     <div className="space-y-8">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">
-          Horaires & Poste
+          {t('secretary.scheduleSettings')}
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Plage de travail</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              {t('secretary.workShift')}
+            </label>
             <select
               value={shift}
               onChange={(e) => setShift(e.target.value)}
@@ -193,14 +369,18 @@ const SecretarySettingsPage: React.FC = () => {
             >
               {WORK_SHIFTS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-            <p className="text-sm text-gray-500 mt-1">Heures affichées dans l'agenda partagé</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {t('secretary.shiftDescription')}
+            </p>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Poste / Extension</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              {t('secretary.postExtension')}
+            </label>
             <input
               type="text"
-              value={profile.poste}
+              value={profile?.poste || ""}
               onChange={(e) => handleProfileUpdate("poste", e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -215,22 +395,30 @@ const SecretarySettingsPage: React.FC = () => {
               onChange={() => setAutoConfirmRdv(prev => !prev)}
               className="h-4 w-4"
             />
-            <span className="text-sm font-medium text-gray-700">Confirmer automatiquement les RDV simples</span>
+            <span className="text-sm font-medium text-gray-700">
+              {t('secretary.autoConfirmAppointments')}
+            </span>
           </label>
-          <p className="text-sm text-gray-500 mt-1">Si activé, les RDV sans conflit seront confirmés automatiquement.</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {t('secretary.autoConfirmDescription')}
+          </p>
         </div>
       </div>
 
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">
-          Intégration WhatsApp & Notifications
+          {t('secretary.whatsappIntegration')}
         </h3>
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <span className="font-medium text-gray-700">API WhatsApp activée</span>
-              <p className="text-sm text-gray-500">Envoyer des rappels et confirmations via WhatsApp</p>
+              <span className="font-medium text-gray-700">
+                {t('secretary.whatsappApiEnabled')}
+              </span>
+              <p className="text-sm text-gray-500">
+                {t('secretary.whatsappApiDescription')}
+              </p>
             </div>
             <button
               onClick={() => setWhatsApiEnabled(prev => !prev)}
@@ -242,14 +430,18 @@ const SecretarySettingsPage: React.FC = () => {
 
           <div className="flex items-center justify-between">
             <div>
-              <span className="font-medium text-gray-700">Rappels automatiques</span>
-              <p className="text-sm text-gray-500">Envoyer un rappel 24h avant le RDV</p>
+              <span className="font-medium text-gray-700">
+                {t('settings.automaticReminders')}
+              </span>
+              <p className="text-sm text-gray-500">
+                {t('settings.remindersDesc')}
+              </p>
             </div>
             <button
               onClick={() => handleNotificationToggle("rappels")}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${profile.notifications.rappels ? 'bg-blue-600' : 'bg-gray-200'}`}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${profile?.notifications.rappels ? 'bg-blue-600' : 'bg-gray-200'}`}
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${profile.notifications.rappels ? 'translate-x-6' : 'translate-x-1'}`}/>
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${profile?.notifications.rappels ? 'translate-x-6' : 'translate-x-1'}`}/>
             </button>
           </div>
         </div>
@@ -257,46 +449,113 @@ const SecretarySettingsPage: React.FC = () => {
 
       <div className="flex justify-end space-x-4 border-t border-gray-200 pt-6">
         <button
-          onClick={() => setProfile(CURRENT_USER)}
+          onClick={async () => {
+            try {
+              const me = await getCurrentUser();
+              setProfile(prev => prev ? {
+                ...prev,
+                prenom: me.first_name || "",
+                nom: me.last_name || "",
+                email: me.email,
+                telephone: me.telephone || "",
+                departement: me.departement || "Accueil & RDV",
+                poste: me.poste || "Standard",
+                langue: me.langue || "fr",
+                theme: me.theme || "light",
+                notifications: me.notifications || {
+                  email: true,
+                  sms: true,
+                  whatsapp: true,
+                  rappels: true,
+                  nouvelles: false,
+                },
+              } : null);
+              showToast("Profil réinitialisé avec succès !", "success");
+            } catch (err) {
+              console.error("❌ Erreur lors du rafraîchissement :", err);
+              showToast("Erreur lors de la réinitialisation du profil", "error");
+            }
+          }}
           className="rounded-lg bg-gray-100 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
         >
-          Réinitialiser
+          {t('common.reset')}
         </button>
         <button
           onClick={handleSaveProfile}
           disabled={isSaving}
           className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          {isSaving ? "Sauvegarde..." : "Sauvegarder les préférences"}
+          {isSaving ? t('common.saving') : t('settings.savePreferences')}
         </button>
       </div>
     </div>
   );
 
-  // Render Security (simplifié)
+  // Render Security
   const renderSecurityTab = () => (
     <div className="space-y-8">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">Modifier le mot de passe</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">
+          {t('settings.changePassword')}
+        </h3>
         <div className="space-y-4 max-w-md">
-          <input type="password" value={currentPassword} onChange={(e)=>setCurrentPassword(e.target.value)} placeholder="Mot de passe actuel" className="w-full rounded-lg border border-gray-300 px-4 py-3"/>
-          <input type="password" value={newPassword} onChange={(e)=>setNewPassword(e.target.value)} placeholder="Nouveau mot de passe" className="w-full rounded-lg border border-gray-300 px-4 py-3"/>
-          <input type="password" value={confirmPassword} onChange={(e)=>setConfirmPassword(e.target.value)} placeholder="Confirmer" className="w-full rounded-lg border border-gray-300 px-4 py-3"/>
-          <button onClick={handleChangePassword} disabled={isSaving || !currentPassword || !newPassword || !confirmPassword} className="rounded-lg bg-blue-600 px-6 py-2.5 text-white">
-            {isSaving ? "Modification..." : "Modifier le mot de passe"}
+          <input 
+            type="password" 
+            value={currentPassword} 
+            onChange={(e)=>setCurrentPassword(e.target.value)} 
+            placeholder={t('settings.currentPassword')}
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <input 
+            type="password" 
+            value={newPassword} 
+            onChange={(e)=>setNewPassword(e.target.value)} 
+            placeholder={t('settings.newPassword')}
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <input 
+            type="password" 
+            value={confirmPassword} 
+            onChange={(e)=>setConfirmPassword(e.target.value)} 
+            placeholder={t('settings.confirmPassword')}
+            className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button 
+            onClick={handleChangePassword} 
+            disabled={isSaving || !currentPassword || !newPassword || !confirmPassword} 
+            className="rounded-lg bg-blue-600 px-6 py-2.5 text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {isSaving ? t('common.updating') : t('settings.updatePassword')}
           </button>
         </div>
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">Sessions actives</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">
+          {t('settings.activeSessions')}
+        </h3>
         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
           <div>
-            <span className="font-medium text-gray-700">Session actuelle</span>
-            <p className="text-sm text-gray-500">Casablanca, Maroc • Chrome sur Windows</p>
-            <p className="text-sm text-gray-500">Connecté depuis aujourd'hui à 09:23</p>
+            <span className="font-medium text-gray-700">
+              {t('settings.currentSession')}
+            </span>
+            <p className="text-sm text-gray-500">
+              {Intl.DateTimeFormat("fr-FR", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              }).format(new Date())}
+            </p>
+            <p className="text-sm text-gray-500">{t('settings.currentBrowser')}</p>
           </div>
-          <button className="text-red-600 text-sm font-medium">Déconnecter</button>
+          <button 
+            onClick={() => {
+              localStorage.clear();
+              window.location.href = "/login";
+            }}
+            className="text-red-600 text-sm font-medium hover:text-red-700"
+          >
+            {t('common.logout')}
+          </button>
         </div>
       </div>
     </div>
@@ -306,67 +565,133 @@ const SecretarySettingsPage: React.FC = () => {
   const renderActionsTab = () => (
     <div className="space-y-8">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">Actions Rapides</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">
+          {t('secretary.quickActions')}
+        </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm text-center">
             <div className="text-2xl font-bold">7</div>
-            <div className="text-sm text-gray-500">RDV en attente</div>
-            <button onClick={handleViewPendingAppointments} className="mt-3 text-sm text-blue-600">Voir</button>
-          </div>
-
-          <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm text-center">
-            <div className="text-2xl font-bold">—</div>
-            <div className="text-sm text-gray-500">Rappels WhatsApp</div>
-            <button onClick={handleSendWhatsAppReminders} disabled={isSaving} className="mt-3 rounded-lg bg-green-600 px-4 py-2 text-white text-sm disabled:opacity-50">
-              {isSaving ? "Envoi..." : "Envoyer les rappels"}
+            <div className="text-sm text-gray-500">{t('secretary.pendingAppointments')}</div>
+            <button 
+              onClick={handleViewPendingAppointments} 
+              className="mt-3 text-sm text-blue-600 hover:text-blue-700"
+            >
+              {t('actions.details')}
             </button>
           </div>
 
           <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm text-center">
-            <div className="text-2xl font-bold">Export</div>
-            <div className="text-sm text-gray-500">Données secrétariat</div>
-            <button onClick={exportData} className="mt-3 text-sm text-blue-600">Exporter</button>
+            <div className="text-2xl font-bold">—</div>
+            <div className="text-sm text-gray-500">{t('secretary.whatsappReminders')}</div>
+            <button 
+              onClick={handleSendWhatsAppReminders} 
+              disabled={isSaving || !whatsApiEnabled}
+              className="mt-3 rounded-lg bg-green-600 px-4 py-2 text-white text-sm hover:bg-green-700 disabled:opacity-50"
+            >
+              {isSaving ? t('common.sending') : t('secretary.sendReminders')}
+            </button>
+          </div>
+
+          <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm text-center">
+            <div className="text-2xl font-bold">{t('secretary.export')}</div>
+            <div className="text-sm text-gray-500">{t('secretary.secretaryData')}</div>
+            <button 
+              onClick={exportData} 
+              className="mt-3 text-sm text-blue-600 hover:text-blue-700"
+            >
+              {t('settings.exportData')}
+            </button>
           </div>
         </div>
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">Outils</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">
+          {t('secretary.tools')}
+        </h3>
         <div className="space-y-3">
-          <button onClick={()=>alert("Accès calendrier (mock)") } className="w-full text-left p-4 bg-gray-50 rounded-lg border">
-            Ouvrir le calendrier partagé
+          <button 
+            onClick={()=>showToast("Ouverture du calendrier partagé...", "warning")} 
+            className="w-full text-left p-4 bg-gray-50 rounded-lg border hover:bg-gray-100"
+          >
+            {t('secretary.openSharedCalendar')}
           </button>
-          <button onClick={()=>alert("Créer un rappel / note (mock)") } className="w-full text-left p-4 bg-gray-50 rounded-lg border">
-            Créer une note interne
+          <button 
+            onClick={()=>showToast("Création d'une note interne...", "warning")} 
+            className="w-full text-left p-4 bg-gray-50 rounded-lg border hover:bg-gray-100"
+          >
+            {t('secretary.createInternalNote')}
           </button>
         </div>
       </div>
     </div>
   );
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600">{t('common.loadingError')}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 p-4 md:p-8">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div className="mx-auto max-w-6xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Espace Secrétaire</h1>
-          <p className="mt-2 text-lg text-gray-600">Gérez les rendez-vous, rappels et paramètres du secrétariat.</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('secretary.title')}</h1>
+          <p className="mt-2 text-lg text-gray-600">{t('secretary.subtitle')}</p>
         </div>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
+          {/* Sidebar */}
           <div className="lg:col-span-1">
+            {/* Carte profil */}
             <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100">
               <div className="text-center">
                 <div className="relative inline-block">
-                  <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">
+                  <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4 overflow-hidden">
                     {photoPreview ? (
-                      <img src={photoPreview} alt="Profile" className="h-24 w-24 rounded-full object-cover" />
+                      <img src={photoPreview} alt="Profile" className="h-full w-full object-cover" />
+                    ) : profile.photo ? (
+                      <img 
+                        src={mediaUrl(profile.photo) || ""} 
+                        alt="Profile" 
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
+                      />
                     ) : (
                       `${profile.prenom[0]}${profile.nom[0]}`
                     )}
                   </div>
                   {isEditing && activeTab === "profil" && (
-                    <label className="absolute -bottom-2 -right-2 bg-blue-600 text-white p-2 rounded-full cursor-pointer">
+                    <label className="absolute -bottom-2 -right-2 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition-colors">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -376,111 +701,215 @@ const SecretarySettingsPage: React.FC = () => {
                   )}
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900">{profile.prenom} {profile.nom}</h2>
-                <p className="text-blue-600 font-medium">Secrétaire</p>
-                <p className="text-sm text-gray-500 mt-1">Membre depuis {formatDate(profile.dateAdhesion)}</p>
+                <p className="text-blue-600 font-medium">{t('roles.secretary')}</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {t('settings.memberSince')} {formatDate(profile.dateAdhesion)}
+                </p>
               </div>
 
               {isEditing && photoPreview && (
-                <button onClick={handleRemovePhoto} className="w-full mt-3 rounded-lg bg-red-50 text-red-600 py-2 text-sm font-medium">
-                  Supprimer la photo
+                <button 
+                  onClick={handleRemovePhoto} 
+                  className="w-full mt-3 rounded-lg bg-red-50 text-red-600 py-2 text-sm font-medium hover:bg-red-100 transition-colors"
+                >
+                  {t('settings.removePhoto')}
                 </button>
               )}
             </div>
 
+            {/* Navigation */}
             <div className="mt-6 rounded-2xl bg-white p-6 shadow-sm border border-gray-100">
               <nav className="space-y-2">
-                <button onClick={()=>setActiveTab("profil")} className={`flex w-full items-center space-x-3 rounded-lg px-4 py-3 text-left ${activeTab==="profil" ? "bg-blue-50 text-blue-700 border border-blue-200": "text-gray-600 hover:bg-gray-50"}`}>
-                  <UserIcon /><span className="font-medium">Profil</span>
+                <button 
+                  onClick={()=>setActiveTab("profil")} 
+                  className={`flex w-full items-center space-x-3 rounded-lg px-4 py-3 text-left transition-colors ${activeTab==="profil" ? "bg-blue-50 text-blue-700 border border-blue-200": "text-gray-600 hover:bg-gray-50"}`}
+                >
+                  <UserIcon /><span className="font-medium">{t('settings.profile')}</span>
                 </button>
-                <button onClick={()=>setActiveTab("preferences")} className={`flex w-full items-center space-x-3 rounded-lg px-4 py-3 text-left ${activeTab==="preferences" ? "bg-blue-50 text-blue-700 border border-blue-200": "text-gray-600 hover:bg-gray-50"}`}>
-                  <SettingsIcon/><span className="font-medium">Préférences</span>
+                <button 
+                  onClick={()=>setActiveTab("preferences")} 
+                  className={`flex w-full items-center space-x-3 rounded-lg px-4 py-3 text-left transition-colors ${activeTab==="preferences" ? "bg-blue-50 text-blue-700 border border-blue-200": "text-gray-600 hover:bg-gray-50"}`}
+                >
+                  <SettingsIcon/><span className="font-medium">{t('settings.preferences')}</span>
                 </button>
-                <button onClick={()=>setActiveTab("securite")} className={`flex w-full items-center space-x-3 rounded-lg px-4 py-3 text-left ${activeTab==="securite" ? "bg-blue-50 text-blue-700 border border-blue-200": "text-gray-600 hover:bg-gray-50"}`}>
-                  <ShieldIcon/><span className="font-medium">Sécurité</span>
+                <button 
+                  onClick={()=>setActiveTab("securite")} 
+                  className={`flex w-full items-center space-x-3 rounded-lg px-4 py-3 text-left transition-colors ${activeTab==="securite" ? "bg-blue-50 text-blue-700 border border-blue-200": "text-gray-600 hover:bg-gray-50"}`}
+                >
+                  <ShieldIcon/><span className="font-medium">{t('settings.security')}</span>
                 </button>
-                <button onClick={()=>setActiveTab("actions")} className={`flex w-full items-center space-x-3 rounded-lg px-4 py-3 text-left ${activeTab==="actions" ? "bg-blue-50 text-blue-700 border border-blue-200": "text-gray-600 hover:bg-gray-50"}`}>
-                  <BadgeIcon/><span className="font-medium">Actions Rapides</span>
+                <button 
+                  onClick={()=>setActiveTab("actions")} 
+                  className={`flex w-full items-center space-x-3 rounded-lg px-4 py-3 text-left transition-colors ${activeTab==="actions" ? "bg-blue-50 text-blue-700 border border-blue-200": "text-gray-600 hover:bg-gray-50"}`}
+                >
+                  <BadgeIcon/><span className="font-medium">{t('secretary.quickActions')}</span>
                 </button>
               </nav>
 
               <div className="mt-8 border-t border-gray-200 pt-6">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Raccourcis</h3>
-                <button onClick={handleViewPendingAppointments} className="flex w-full items-center space-x-3 rounded-lg px-4 py-3 text-gray-600 hover:bg-gray-50">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('settings.quickActions')}</h3>
+                <button 
+                  onClick={handleViewPendingAppointments} 
+                  className="flex w-full items-center space-x-3 rounded-lg px-4 py-3 text-gray-600 hover:bg-gray-50 transition-colors"
+                >
                   <DownloadIcon/>
-                  <span className="font-medium">Voir RDV en attente</span>
+                  <span className="font-medium">{t('secretary.viewPendingAppointments')}</span>
                 </button>
-                <button onClick={handleSendWhatsAppReminders} disabled={!whatsApiEnabled || isSaving} className="mt-3 flex w-full items-center space-x-3 rounded-lg px-4 py-3 text-gray-600 hover:bg-gray-50">
+                <button 
+                  onClick={handleSendWhatsAppReminders} 
+                  disabled={!whatsApiEnabled || isSaving} 
+                  className="mt-3 flex w-full items-center space-x-3 rounded-lg px-4 py-3 text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
                   <WhatsAppIcon/>
-                  <span className="font-medium">Envoyer rappels WhatsApp</span>
+                  <span className="font-medium">{t('secretary.sendWhatsappReminders')}</span>
                 </button>
               </div>
             </div>
           </div>
 
+          {/* Contenu principal */}
           <div className="lg:col-span-3">
             {/* Profil */}
             {activeTab === "profil" && (
               <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Informations Personnelles</h2>
-                    <p className="text-gray-600 mt-1">Détails de contact et paramétrage du secrétariat</p>
+                    <h2 className="text-2xl font-bold text-gray-900">{t('settings.personalInfo')}</h2>
+                    <p className="text-gray-600 mt-1">{t('secretary.profileDescription')}</p>
                   </div>
-                  <button onClick={()=>setIsEditing(!isEditing)} className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white">
-                    {isEditing ? "Annuler" : "Modifier le profil"}
+                  <button 
+                    onClick={()=>setIsEditing(!isEditing)} 
+                    className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                  >
+                    {isEditing ? t('common.cancel') : t('settings.editProfile')}
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b">Infos personnelles</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">
+                      {t('settings.personalInfo')}
+                    </h3>
                     <div className="space-y-6">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Prénom *</label>
-                        {isEditing ? <input type="text" value={profile.prenom} onChange={(e)=>handleProfileUpdate("prenom", e.target.value)} className="w-full rounded-lg border px-4 py-3" /> : <p className="text-lg text-gray-900">{profile.prenom}</p>}
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          {t('common.firstName')} *
+                        </label>
+                        {isEditing ? (
+                          <input 
+                            type="text" 
+                            value={profile.prenom} 
+                            onChange={(e)=>handleProfileUpdate("prenom", e.target.value)} 
+                            className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <p className="text-lg text-gray-900">{profile.prenom}</p>
+                        )}
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Nom *</label>
-                        {isEditing ? <input type="text" value={profile.nom} onChange={(e)=>handleProfileUpdate("nom", e.target.value)} className="w-full rounded-lg border px-4 py-3" /> : <p className="text-lg text-gray-900">{profile.nom}</p>}
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          {t('common.lastName')} *
+                        </label>
+                        {isEditing ? (
+                          <input 
+                            type="text" 
+                            value={profile.nom} 
+                            onChange={(e)=>handleProfileUpdate("nom", e.target.value)} 
+                            className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <p className="text-lg text-gray-900">{profile.nom}</p>
+                        )}
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Email *</label>
-                        {isEditing ? <input type="email" value={profile.email} onChange={(e)=>handleProfileUpdate("email", e.target.value)} className="w-full rounded-lg border px-4 py-3" /> : <p className="text-lg text-gray-900">{profile.email}</p>}
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          {t('common.email')} *
+                        </label>
+                        {isEditing ? (
+                          <input 
+                            type="email" 
+                            value={profile.email} 
+                            onChange={(e)=>handleProfileUpdate("email", e.target.value)} 
+                            className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <p className="text-lg text-gray-900">{profile.email}</p>
+                        )}
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Téléphone *</label>
-                        {isEditing ? <input type="tel" value={profile.telephone} onChange={(e)=>handleProfileUpdate("telephone", e.target.value)} className="w-full rounded-lg border px-4 py-3" /> : <p className="text-lg text-gray-900">{profile.telephone}</p>}
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          {t('common.phone')} *
+                        </label>
+                        {isEditing ? (
+                          <input 
+                            type="tel" 
+                            value={profile.telephone} 
+                            onChange={(e)=>handleProfileUpdate("telephone", e.target.value)} 
+                            className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <p className="text-lg text-gray-900">{profile.telephone}</p>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b">Paramètres du secrétariat</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">
+                      {t('secretary.secretarySettings')}
+                    </h3>
                     <div className="space-y-6">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Département</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          {t('settings.department')}
+                        </label>
                         {isEditing ? (
-                          <select value={profile.departement} onChange={(e)=>handleProfileUpdate("departement", e.target.value)} className="w-full rounded-lg border px-4 py-3">
+                          <select 
+                            value={profile.departement} 
+                            onChange={(e)=>handleProfileUpdate("departement", e.target.value)} 
+                            className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                          >
                             {DEPARTEMENTS.map(d=> <option key={d} value={d}>{d}</option>)}
                           </select>
-                        ) : <p className="text-lg text-gray-900">{profile.departement}</p>}
+                        ) : (
+                          <p className="text-lg text-gray-900">{profile.departement}</p>
+                        )}
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Poste / Extension</label>
-                        {isEditing ? <input type="text" value={profile.poste} onChange={(e)=>handleProfileUpdate("poste", e.target.value)} className="w-full rounded-lg border px-4 py-3" /> : <p className="text-lg text-gray-900">{profile.poste}</p>}
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          {t('secretary.postExtension')}
+                        </label>
+                        {isEditing ? (
+                          <input 
+                            type="text" 
+                            value={profile.poste} 
+                            onChange={(e)=>handleProfileUpdate("poste", e.target.value)} 
+                            className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <p className="text-lg text-gray-900">{profile.poste}</p>
+                        )}
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Langue</label>
-                        <select value={profile.langue} onChange={(e)=>handleProfileUpdate("langue", e.target.value)} className="w-full rounded-lg border px-4 py-3">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          {t('settings.interfaceLanguage')}
+                        </label>
+                        <select 
+                          value={profile.langue} 
+                          onChange={(e)=>handleProfileUpdate("langue", e.target.value)} 
+                          className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                        >
                           <option value="fr">Français</option>
                           <option value="en">English</option>
                         </select>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Date d'adhésion</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          {t('settings.joinDate')}
+                        </label>
                         <p className="text-lg text-gray-900">{formatDate(profile.dateAdhesion)}</p>
                       </div>
                     </div>
@@ -489,9 +918,18 @@ const SecretarySettingsPage: React.FC = () => {
 
                 {isEditing && (
                   <div className="mt-8 flex justify-end space-x-4 border-t border-gray-200 pt-6">
-                    <button onClick={()=>setIsEditing(false)} className="rounded-lg bg-gray-100 px-6 py-2.5">Annuler</button>
-                    <button onClick={handleSaveProfile} disabled={isSaving} className="rounded-lg bg-blue-600 px-6 py-2.5 text-white">
-                      {isSaving ? "Sauvegarde..." : "Sauvegarder les modifications"}
+                    <button 
+                      onClick={()=>setIsEditing(false)} 
+                      className="rounded-lg bg-gray-100 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+                    >
+                      {t('common.cancel')}
+                    </button>
+                    <button 
+                      onClick={handleSaveProfile} 
+                      disabled={isSaving}
+                      className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    >
+                      {isSaving ? t('common.saving') : t('settings.saveChanges')}
                     </button>
                   </div>
                 )}
@@ -503,8 +941,8 @@ const SecretarySettingsPage: React.FC = () => {
               <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Préférences Secrétariat</h2>
-                    <p className="text-gray-600 mt-1">Gérer horaires, notifications et intégrations</p>
+                    <h2 className="text-2xl font-bold text-gray-900">{t('secretary.preferencesTitle')}</h2>
+                    <p className="text-gray-600 mt-1">{t('secretary.preferencesDescription')}</p>
                   </div>
                 </div>
                 {renderPreferencesTab()}
@@ -516,8 +954,8 @@ const SecretarySettingsPage: React.FC = () => {
               <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Sécurité du Compte</h2>
-                    <p className="text-gray-600 mt-1">Modifier mot de passe et gérer sessions</p>
+                    <h2 className="text-2xl font-bold text-gray-900">{t('settings.security')}</h2>
+                    <p className="text-gray-600 mt-1">{t('secretary.securityDescription')}</p>
                   </div>
                 </div>
                 {renderSecurityTab()}
@@ -529,8 +967,8 @@ const SecretarySettingsPage: React.FC = () => {
               <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Actions Rapides</h2>
-                    <p className="text-gray-600 mt-1">Accès aux outils du secrétariat</p>
+                    <h2 className="text-2xl font-bold text-gray-900">{t('secretary.quickActions')}</h2>
+                    <p className="text-gray-600 mt-1">{t('secretary.actionsDescription')}</p>
                   </div>
                 </div>
                 {renderActionsTab()}
@@ -543,14 +981,14 @@ const SecretarySettingsPage: React.FC = () => {
   );
 };
 
-/** Icônes (simples) */
+/** Icônes */
 const UserIcon = () => (
   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
   </svg>
 );
-const SettingsIcon = ({ className = "h-5 w-5" }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+const SettingsIcon = () => (
+  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
   </svg>

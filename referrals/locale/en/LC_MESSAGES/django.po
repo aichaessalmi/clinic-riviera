@@ -1,0 +1,227 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-11-05 14:27+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: .\referrals\models.py:11
+msgid "Homme"
+msgstr ""
+
+#: .\referrals\models.py:12
+msgid "Femme"
+msgstr ""
+
+#: .\referrals\models.py:13
+msgid "Autre"
+msgstr ""
+
+#: .\referrals\models.py:14
+msgid "Non précisé"
+msgstr ""
+
+#: .\referrals\models.py:17
+msgid "Prénom"
+msgstr ""
+
+#: .\referrals\models.py:18
+msgid "Nom de famille"
+msgstr ""
+
+#: .\referrals\models.py:19
+msgid "Date de naissance"
+msgstr ""
+
+#: .\referrals\models.py:20
+msgid "Genre"
+msgstr ""
+
+#: .\referrals\models.py:21
+msgid "Téléphone"
+msgstr ""
+
+#: .\referrals\models.py:22
+msgid "Email"
+msgstr ""
+
+#: .\referrals\models.py:23
+msgid "Adresse"
+msgstr ""
+
+#: .\referrals\models.py:24
+msgid "Ville"
+msgstr ""
+
+#: .\referrals\models.py:25
+msgid "Code postal"
+msgstr ""
+
+#: .\referrals\models.py:28 .\referrals\models.py:112
+msgid "Patient"
+msgstr ""
+
+#: .\referrals\models.py:29
+msgid "Patients"
+msgstr ""
+
+#: .\referrals\models.py:47
+msgid "Fournisseur d'assurance"
+msgstr ""
+
+#: .\referrals\models.py:48
+msgid "Numéro de police"
+msgstr ""
+
+#: .\referrals\models.py:49
+msgid "Type de couverture"
+msgstr ""
+
+#: .\referrals\models.py:50
+msgid "Date d'expiration"
+msgstr ""
+
+#: .\referrals\models.py:51
+msgid "Titulaire"
+msgstr ""
+
+#: .\referrals\models.py:52
+msgid "Notes"
+msgstr ""
+
+#: .\referrals\models.py:55 .\referrals\models.py:59 .\referrals\models.py:120
+msgid "Assurance"
+msgstr ""
+
+#: .\referrals\models.py:56
+msgid "Assurances"
+msgstr ""
+
+#: .\referrals\models.py:66 .\referrals\models.py:81
+msgid "Nom"
+msgstr ""
+
+#: .\referrals\models.py:67
+msgid "Description"
+msgstr ""
+
+#: .\referrals\models.py:70 .\referrals\models.py:138
+msgid "Type d’intervention"
+msgstr ""
+
+#: .\referrals\models.py:71
+msgid "Types d’interventions"
+msgstr ""
+
+#: .\referrals\models.py:82
+msgid "Couleur"
+msgstr ""
+
+#: .\referrals\models.py:82
+msgid "Ex : rouge, orange, vert"
+msgstr ""
+
+#: .\referrals\models.py:83
+msgid "Priorité"
+msgstr ""
+
+#: .\referrals\models.py:83
+msgid "Plus petit = plus urgent"
+msgstr ""
+
+#: .\referrals\models.py:87 .\referrals\models.py:146
+msgid "Niveau d’urgence"
+msgstr ""
+
+#: .\referrals\models.py:88
+msgid "Niveaux d’urgence"
+msgstr ""
+
+#: .\referrals\models.py:99
+msgid "Nouveau"
+msgstr ""
+
+#: .\referrals\models.py:100
+msgid "Envoyé"
+msgstr ""
+
+#: .\referrals\models.py:101
+msgid "Accepté"
+msgstr ""
+
+#: .\referrals\models.py:102
+msgid "Rejeté"
+msgstr ""
+
+#: .\referrals\models.py:103
+msgid "Arrivé"
+msgstr ""
+
+#: .\referrals\models.py:128
+msgid "Médecin créateur"
+msgstr ""
+
+#: .\referrals\models.py:149
+msgid "Motif de consultation"
+msgstr ""
+
+#: .\referrals\models.py:150
+msgid "Antécédents médicaux"
+msgstr ""
+
+#: .\referrals\models.py:151
+msgid "Médecin référent"
+msgstr ""
+
+#: .\referrals\models.py:152
+msgid "Établissement"
+msgstr ""
+
+#: .\referrals\models.py:155
+msgid "Numéro de chambre"
+msgstr ""
+
+#: .\referrals\models.py:158
+msgid "Médecin"
+msgstr ""
+
+#: .\referrals\models.py:159
+msgid "Spécialité cible"
+msgstr ""
+
+#: .\referrals\models.py:160
+msgid "Notes supplémentaires"
+msgstr ""
+
+#: .\referrals\models.py:162
+msgid "Statut"
+msgstr ""
+
+#: .\referrals\models.py:163
+msgid "Date de création"
+msgstr ""
+
+#: .\referrals\models.py:164
+msgid "Dernière mise à jour"
+msgstr ""
+
+#: .\referrals\models.py:168
+msgid "Référence"
+msgstr ""
+
+#: .\referrals\models.py:169
+msgid "Références"
+msgstr ""

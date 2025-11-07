@@ -1,4 +1,3 @@
-// src/features/auth/Login.tsx
 import { useState } from "react";
 import { Card, Form, Input, Select, Button, Typography } from "antd";
 import { useAuth } from "../../auth/AuthContext";
@@ -20,7 +19,7 @@ export default function Login() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      // IMPORTANT : ne jamais trimmer le mot de passe
+      // ⚠️ Ne jamais trimmer le mot de passe
       const payload: any = { username: (vals.username ?? "").trim(), role };
       if (role === "MEDECIN") {
         payload.code_personnel = vals.code_personnel;
@@ -35,7 +34,7 @@ export default function Login() {
       else nav("/appointments");
     } catch (e: any) {
       console.error("❌ Erreur d’authentification :", e?.response?.data || e?.message);
-      setErrorMsg(t("auth_error_message"));
+      setErrorMsg(t("auth.auth_error_message"));
     } finally {
       setLoading(false);
     }
@@ -54,28 +53,29 @@ export default function Login() {
       <Card
         style={{
           width: "100%",
-          maxWidth: 420,            // ✅ responsive
+          maxWidth: 420,
           borderRadius: 12,
           boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
         }}
       >
         {/* Logo + titre */}
         <div style={{ textAlign: "center", marginBottom: 24 }}>
-          
           <Typography.Title level={4} style={{ margin: 0 }}>
             Clinique Riviera
           </Typography.Title>
-          <Typography.Text type="secondary">{t("system_title")}</Typography.Text>
+          <Typography.Text type="secondary">{t("system.title")}</Typography.Text>
           <br />
           <Typography.Text type="secondary">Casablanca, Maroc</Typography.Text>
         </div>
 
         {/* Welcome */}
         <Typography.Title level={5} style={{ textAlign: "center", marginBottom: 12 }}>
-          {t("welcome")}
+          {t("system.welcome")}
         </Typography.Title>
-        <Typography.Paragraph style={{ textAlign: "center", color: "#666", marginBottom: 24 }}>
-          {t("welcome_subtitle")}
+        <Typography.Paragraph
+          style={{ textAlign: "center", color: "#666", marginBottom: 24 }}
+        >
+          {t("system.welcome_subtitle")}
         </Typography.Paragraph>
 
         {/* Erreur */}
@@ -93,18 +93,20 @@ export default function Login() {
             }}
           >
             <span style={{ color: "#ff4d4f", fontSize: 20, fontWeight: "bold" }}>⚠️</span>
-            <span style={{ color: "#d93025", fontWeight: 600, fontSize: 15 }}>{errorMsg}</span>
+            <span style={{ color: "#d93025", fontWeight: 600, fontSize: 15 }}>
+              {errorMsg}
+            </span>
           </div>
         )}
 
         {/* Form */}
         <Form layout="vertical" onFinish={onFinish} autoComplete="on">
-          <Form.Item name="role" label={t("role")} initialValue="SECRETAIRE">
+          <Form.Item name="role" label={t("auth.role")} initialValue="SECRETAIRE">
             <Select
               options={[
-                { value: "DIRECTION", label: t("roles.direction") },
-                { value: "SECRETAIRE", label: t("roles.secretaire") },
-                { value: "MEDECIN", label: t("roles.medecin") },
+                { value: "DIRECTION", label: t("auth.roles.direction") },
+                { value: "SECRETAIRE", label: t("auth.roles.secretaire") },
+                { value: "MEDECIN", label: t("auth.roles.medecin") },
               ]}
               onChange={(v) => setRole(v as Role)}
             />
@@ -112,56 +114,52 @@ export default function Login() {
 
           <Form.Item
             name="username"
-            label={t("username")}
-            rules={[{ required: true, message: t("required") }]}
+            label={t("auth.username")}
+            rules={[{ required: true, message: t("auth.required") }]}
           >
             <Input
               placeholder="votre.email@example.com"
-              // Mobile-safe
               type="email"
               inputMode="email"
               autoComplete="username email"
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              style={{ fontSize: 16 }} // ✅ évite le zoom iOS
+              style={{ fontSize: 16 }}
             />
           </Form.Item>
 
-          {role !== "MEDECIN" && (
+          {/* Mot de passe ou code personnel */}
+          {role !== "MEDECIN" ? (
             <Form.Item
               name="password"
-              label={t("password")}
-              rules={[{ required: true, message: t("required") }]}
+              label={t("auth.password")}
+              rules={[{ required: true, message: t("auth.required") }]}
             >
               <Input.Password
                 placeholder="••••••••"
-                // Mobile-safe
                 autoComplete="current-password"
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
-                style={{ fontSize: 16 }} // ✅ évite le zoom iOS
+                style={{ fontSize: 16 }}
                 visibilityToggle
               />
             </Form.Item>
-          )}
-
-          {role === "MEDECIN" && (
+          ) : (
             <Form.Item
               name="code_personnel"
-              label={t("code")}
-              rules={[{ required: true, message: t("required") }]}
+              label={t("auth.code")}
+              rules={[{ required: true, message: t("auth.required") }]}
             >
               <Input
-                placeholder="Code personnel"
-                // si c'est un code numérique: inputMode="numeric" pattern pour claviers mobiles
+                placeholder={t("auth.code")}
                 inputMode="text"
                 autoComplete="one-time-code"
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
-                style={{ fontSize: 16 }} // ✅ évite le zoom iOS
+                style={{ fontSize: 16 }}
               />
             </Form.Item>
           )}
@@ -173,7 +171,7 @@ export default function Login() {
             loading={loading}
             style={{ marginTop: 8 }}
           >
-            {t("login_btn")}
+            {t("auth.login_btn")}
           </Button>
         </Form>
 
@@ -188,19 +186,19 @@ export default function Login() {
           }}
         >
           <Typography.Text strong style={{ display: "block" }}>
-            {t("secure_connection")}
+            {t("auth.secure_connection")}
           </Typography.Text>
           <Typography.Text type="secondary" style={{ display: "block", fontSize: 13 }}>
-            {t("encryption")}
+            {t("auth.encryption")}
           </Typography.Text>
           <Typography.Text type="secondary" style={{ display: "block", fontSize: 13 }}>
-            {t("hipaa")}
+            {t("auth.hipaa")}
           </Typography.Text>
         </div>
 
         {/* Langue */}
         <div style={{ textAlign: "center", marginTop: 12 }}>
-          🌐 {t("language")}{" "}
+          🌐 {t("auth.language")}{" "}
           <Button type="link" size="small" onClick={() => i18n.changeLanguage("fr")}>
             FR
           </Button>

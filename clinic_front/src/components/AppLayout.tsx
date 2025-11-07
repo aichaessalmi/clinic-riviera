@@ -47,32 +47,43 @@ function TopNavLink({
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { role, logout, ready } = useAuth();
-  const { t, i18n } = useTranslation(); // default namespace or multiple namespaces loaded in i18n init
+  const { i18n } = useTranslation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
-  // Items defined after hook so we can use t() for labels (updates on language change)
+  const lang = i18n.language || "fr";
+
+  // 🔹 Traductions locales directes sans dépendance à t("header...")
+  const labels = {
+    dashboard: lang === "fr" ? "Tableau de bord" : "Dashboard",
+    referrals: lang === "fr" ? "Références" : "Referrals",
+    new_ref: lang === "fr" ? "Nouvelle Référence" : "New Referral",
+    notifications: lang === "fr" ? "Notifications" : "Notifications",
+    calendar: lang === "fr" ? "Calendrier" : "Calendar",
+    whatsapp_reminders: lang === "fr" ? "Rappels WhatsApp" : "WhatsApp Reminders",
+    appointments_history: lang === "fr" ? "Historique des rendez-vous" : "Appointments History",
+    analytics: lang === "fr" ? "Analytique" : "Analytics",
+    profile: lang === "fr" ? "Profil" : "Profile",
+    logout: lang === "fr" ? "Déconnexion" : "Logout",
+    open_menu: lang === "fr" ? "Ouvrir le menu" : "Open menu",
+  };
+
   const allItems: NavItem[] = [
-    { key: "dashboard", to: "/dashboard", label: t("header.dashboard"), showFor: ["DIRECTION", "SECRETAIRE"] },
-    { key: "my_refs", to: "/referrals/mine", label: t("header.referrals"), showFor: ["MEDECIN"] },
-    { key: "new_ref", to: "/referrals/new", label: t("header.new_ref"), primary: true, showFor: ["MEDECIN"] },
-    { key: "notif", to: "/notifications", label: t("header.notifications"), showFor: ["MEDECIN"] },
-    { key: "cal", to: "/calendar", label: t("header.calendar"), showFor: ["DIRECTION", "SECRETAIRE"] },
-
-    { key: "patients_reg", to: "/patients", label: t("header.whatsapp_reminders"), showFor: ["DIRECTION", "SECRETAIRE"] },
-    { key: "referrals_sec", to: "/patient", label: t("header.referrals"), showFor: ["SECRETAIRE","DIRECTION"] },
-
-    { key: "appointments", to: "/Appointments", label: t("header.appointments_history"), showFor: ["DIRECTION", "SECRETAIRE"] },
-    { key: "analytics", to: "/Analytics", label: t("header.analytics"), showFor: ["DIRECTION"] },
-
-    { key: "Profile", to: "/Profile", label: t("header.profile"), showFor: ["MEDECIN"] },
-    { key: "ProfileSEC", to: "/ProfileSEC", label: t("header.profile"), showFor: ["SECRETAIRE"] },
-    { key: "ProfileDIR", to: "/ProfileDIR", label: t("header.profile"), showFor: ["DIRECTION"] },
+    { key: "dashboard", to: "/dashboard", label: labels.dashboard, showFor: ["DIRECTION", "SECRETAIRE"] },
+    { key: "my_refs", to: "/referrals/mine", label: labels.referrals, showFor: ["MEDECIN"] },
+    { key: "new_ref", to: "/referrals/new", label: labels.new_ref, primary: true, showFor: ["MEDECIN"] },
+    { key: "notif", to: "/notifications", label: labels.notifications, showFor: ["MEDECIN"] },
+    { key: "cal", to: "/calendar", label: labels.calendar, showFor: ["DIRECTION", "SECRETAIRE"] },
+    { key: "patients_reg", to: "/patients", label: labels.whatsapp_reminders, showFor: ["DIRECTION", "SECRETAIRE"] },
+    { key: "referrals_sec", to: "/patient", label: labels.referrals, showFor: ["SECRETAIRE", "DIRECTION"] },
+    { key: "appointments", to: "/Appointments", label: labels.appointments_history, showFor: ["DIRECTION", "SECRETAIRE"] },
+    { key: "analytics", to: "/Analytics", label: labels.analytics, showFor: ["DIRECTION"] },
+    { key: "Profile", to: "/Profile", label: labels.profile, showFor: ["MEDECIN"] },
+    { key: "ProfileSEC", to: "/Profile-sec", label: labels.profile, showFor: ["SECRETAIRE"] },
+    { key: "ProfileDIR", to: "/profile-dir", label: labels.profile, showFor: ["DIRECTION"] },
   ];
 
   const items: NavItem[] = role ? allItems.filter(it => it.showFor?.includes(role)) : [];
-
-  // Qui voit la cloche ? (comme l’onglet Notifications)
   const canSeeBell = !!role && ["MEDECIN"].includes(role);
 
   if (!ready) {
@@ -107,8 +118,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="grid h-8 w-8 place-items-center rounded-md bg-blue-600 text-white font-semibold">
               CR
             </div>
-            <span className="text-slate-900 font-semibold">Clinique Riviera</span>
+            <span className="text-slate-900 font-semibold">
+              {i18n.language === "fr" ? "Clinique Riviera" : "Riviera Clinic"}
+            </span>
           </Link>
+
 
           {/* Nav desktop */}
           <nav className="hidden md:flex items-center gap-2">
@@ -134,7 +148,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               }}
               className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-red-700"
             >
-              {t("header.logout")}
+              {labels.logout}
             </button>
           </div>
 
@@ -142,7 +156,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <button
             onClick={() => setOpen((v) => !v)}
             className="md:hidden rounded-lg border border-slate-200 p-2 text-slate-700 hover:bg-slate-100"
-            aria-label={t("header.open_menu")}
+            aria-label={labels.open_menu}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -185,7 +199,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   }}
                   className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-red-700"
                 >
-                  {t("header.logout")}
+                  {labels.logout}
                 </button>
               </div>
             </div>

@@ -1,0 +1,8 @@
+
+[
+  { "model": "appointments.room", "pk": 1, "fields": { "name": "Chambre 101", "status": "Disponible" } },
+  { "model": "appointments.room", "pk": 2, "fields": { "name": "Chambre 102", "status": "Disponible" } },
+  { "model": "appointments.appointmenttype", "pk": 1, "fields": { "name": "Consultation" } },
+  { "model": "appointments.appointmenttype", "pk": 2, "fields": { "name": "Contrôle" } },
+  { "model": "appointments.appointmenttype", "pk": 3, "fields": { "name": "Urgence" } }
+]

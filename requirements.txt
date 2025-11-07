@@ -16,3 +16,5 @@ python-dotenv>=1.0.1     # pour .env
 # --- Utilitaires ---
 django-cors-headers>=4.3.1
 twilio>=8.0.0
+django-filter>=24.3
+C:\Users\PC USER\OneDrive\Bureau\clinic_backend\requirements.txt

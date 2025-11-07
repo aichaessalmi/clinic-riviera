@@ -1,32 +1,561 @@
 {
-  "system_title": "Management System",
-  "welcome": "Welcome to your professional space",
-  "welcome_subtitle": "Log in to access the management system",
-  "role": "Role",
-  "roles": {
-    "direction": "Management",
-    "secretaire": "Secretary",
-    "medecin": "Referent doctor"
-  },
-  "username": "Email",
-  "password": "Password",
-  "code": "Personal Code",
-  "login_btn": "Sign In",
-  "secure_connection": "Secure SSL Connection",
-  "encryption": "256-bit Encryption",
-  "hipaa": "HIPAA Certified",
-  "auth_error_title": "Authentication Error",
-  "auth_error_message": "Incorrect username or password!",
+  "system": {
+  "title": "Management System",
   "brand_name": "Riviera Clinic",
   "dashboard": "Dashboard",
-  "referrals": "Referrals",
-  "new_ref": "+ New Referral",
-  "notifications": "Notifications",
-  "calendar": "Calendar",
-  "whatsapp_reminders": "WhatsApp Reminders",
-  "appointments_history": "Appointments History",
-  "analytics": "Analytics",
-  "profile": "Profile",
-  "logout": "Logout",
-  "open_menu": "Open menu"
+  "welcome": "Welcome to your professional space",
+  "welcome_subtitle": "Log in to access the management system"
+},
+  "auth": {
+     "required": "This field is required",
+  "language": "Language",
+    "role": "Role",
+    "roles": {
+      "direction": "Management",
+      "secretaire": "Secretary",
+      "medecin": "Referring Doctor"
+    },
+    "username": "Email",
+    "password": "Password",
+    "code": "Personal Code",
+    "login_btn": "Log In",
+    "secure_connection": "Secure SSL Connection",
+    "encryption": "256-bit Encryption",
+    "hipaa": "HIPAA Certified",
+    "auth_error_message": "❌ Incorrect username or password!"
+  },
+
+  "navbar": {
+    "new_ref": "+ New Referral",
+    "notifications": "Notifications",
+    "calendar": "Calendar",
+    "whatsapp_reminders": "WhatsApp Reminders",
+    "appointments_history": "Appointments History",
+    "analytics": "Analytics",
+    "profile": "Profile",
+    "logout": "Logout",
+    "open_menu": "Open menu"
+  },
+
+  
+  "referral_form": {
+    "new_referral": "New Patient Referral",
+    "fill_form": "Fill out the form to refer a patient to Riviera Clinic",
+    
+    "patient_info": "Patient Information",
+    "medical_details": "Medical Details",
+    "insurance_info": "Insurance Information",
+
+    "first_name": "First Name",
+    "last_name": "Last Name", 
+    "birth_date": "Birth Date",
+    "gender": "Gender",
+    "male": "Male",
+    "female": "Female",
+    "other": "Other",
+    "phone": "Phone Number",
+    "email": "Email",
+    "address": "Address",
+    "city": "City",
+    "postal_code": "Postal Code",
+
+    "intervention_type": "Intervention Type",
+    "urgency_level": "Urgency Level",
+    "consultation_reason": "Consultation Reason",
+    "medical_history": "Medical History",
+    "referring_doctor": "Referring Doctor",
+    "establishment": "Establishment",
+
+    "insurance_provider": "Insurance Provider",
+    "insurance_policy_number": "Policy Number",
+    "coverage_type": "Coverage Type",
+    "expiration_date": "Expiration Date",
+    "holder_name": "Holder Name",
+    "insurance_notes": "Insurance Notes",
+
+    "first_name_ph": "Enter first name",
+    "last_name_ph": "Enter last name",
+    "gender_ph": "Select gender",
+    "address_ph": "Complete address",
+    "consultation_reason_ph": "Describe reason and symptoms…",
+    "medical_history_ph": "Allergies, treatments, medical history…",
+    "intervention_type_ph": "Select specialty", 
+    "urgency_level_ph": "Select urgency",
+    "insurance_provider_ph": "Select insurer",
+    "insurance_policy_number_ph": "Enter policy number",
+    "coverage_type_ph": "ex: Basic, Extended",
+    "holder_name_ph": "If different from patient",
+    "insurance_notes_ph": "Additional information, restrictions, etc.",
+    "referring_doctor_ph": "Full name of referring doctor",
+    "establishment_ph": "Establishment name",
+
+    "back": "Back",
+    "next": "Next",
+    "cancel": "Cancel",
+    "submit": "Submit Referral",
+    "sending": "Sending…",
+    "success": "Referral created successfully.",
+    "error": "An error occurred. Please try again."
+  },
+
+  "interventions": {
+    "all": "All interventions",
+    "cardio": "Cardiology",
+    "neuro": "Neurology",
+    "ortho": "Orthopedics",
+    "derma": "Dermatology",
+    "ophtal": "Ophthalmology", 
+    "chirurgie": "Surgery",
+    "radiologie": "Radiology",
+    "urgences": "Emergency",
+    "consultation": "Consultation"
+  },
+
+  "urgency": {
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High", 
+    "normal": "Normal",
+    "urgent": "Urgent"
+  },
+
+  "providers": {
+    "cnss": "CNSS",
+    "cnops": "CNOPS",
+    "axa": "AXA",
+    "saham": "Saham"
+  }
+,
+  "referrals": {
+    "title": "My Referrals",
+    "subtitle": "List of your patient referrals",
+    "list_title": "Referrals",
+    "results": "results",
+    "empty": "No results",
+    "showing": "Showing",
+    "to": "to",
+    "of": "of",
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "done": "Done",
+      "cancelled": "Cancelled",
+      "completed": "Completed"
+    },
+    "priority": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "csv": {
+      "id": "ID",
+      "name": "Name",
+      "intervention": "Intervention",
+      "date": "Date",
+      "insurance": "Insurance",
+      "status": "Status",
+      "priority": "Priority"
+    }
+  },
+
+  "notif": {
+    "intervention_type": "Intervention type",
+    "title": "Arrival Notifications",
+    "subtitle": "Real-time patient arrival tracking",
+    "new_title": "New notifications",
+    "unread": "unread",
+    "latest_patients": "Latest patient arrivals",
+    "latest_updates": "Latest updates",
+    "new": "New",
+    "ack": "Ack",
+    "acknowledged": "Acknowledged",
+    "read": "Read",
+    "pause": "Pause",
+    "resume": "Resume",
+    "mark_all_read": "Mark all as read",
+    "live": "Live",
+    "history": "History",
+    "loading": "Loading…",
+    "empty": "No notifications to display",
+    "network_error": "Server connection error",
+    "just_now": "just now",
+    "minutes_ago": "{{count}} min ago",
+    "hours_ago": "{{count}} h ago",
+    "referred_by": "Referred by",
+    "patient": "Patient",
+    "patient_name": "Patient name",
+    "ref_doctor": "Referring doctor",
+    "room": "Assigned room",
+    "speciality": "Specialty",
+    "appointment": "Appointment",
+    "appointment_time": "Appointment time",
+    "ack_button": "Acknowledge receipt",
+    "mark_read": "Mark as read",
+    "details": "Details",
+    "view_all": "View all notifications",
+    "close": "Close",
+    "detail_title": "Notification details",
+    "patient_arrival": "Patient arrival",
+    "patient_info": "Patient information",
+    "appointment_details": "Appointment details",
+    "message": "Message",
+    "additional_notes": "Additional notes"
+  },
+
+  "filters": {
+    "title": "Filters",
+    "search": "Search",
+    "search_ph": "Search by name or insurance…",
+    "intervention": "Intervention",
+    "status": "Status",
+    "insurance": "Insurance",
+    "start_date": "Start date",
+    "end_date": "End date",
+    "today": "Today",
+    "all_statuses": "All statuses",
+    "all_insurances": "All insurances"
+  },
+
+  "table": {
+    "patient": "Patient",
+    "intervention": "Intervention",
+    "date": "Date",
+    "insurance": "Insurance",
+    "status": "Status",
+    "priority": "Priority",
+    "actions": "Actions"
+  },
+
+  "actions": {
+    "details": "Details",
+    "close": "Close",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "export_csv": "Export CSV",
+    "reset": "Reset",
+    "create": "Create"
+  },
+
+  "details": {
+    "title": "Referral Details"
+  },
+
+  "new_appointment": {
+    "new": "New appointment",
+    "new_appointment": "Create appointment",
+    "patient_info": "Patient information",
+    "first_name": "First name",
+    "last_name": "Last name",
+    "phone": "Phone",
+    "details": "Appointment details",
+    "date": "Date",
+    "time": "Time",
+    "doctor": "Doctor",
+    "select_doctor": "Select a doctor",
+    "room": "Room",
+    "select_room": "Select a room",
+    "type": "Appointment type",
+    "select_type": "Select a type",
+    "status": "Status",
+    "pending": "Pending",
+    "confirmed": "Confirmed",
+    "to_call": "To call back",
+    "cancelled": "Cancelled",
+    "completed": "Completed",
+    "reason": "Appointment reason",
+    "reason_placeholder": "Briefly describe the reason",
+    "notes": "Additional notes",
+    "notes_placeholder": "Add an optional note",
+    "alert_name": "Please enter first and last name.",
+    "alert_date": "Please select date and time.",
+    "alert_doctor": "Please select a doctor.",
+    "alert_room": "Please select a room.",
+    "alert_type": "Please select an appointment type.",
+    "alert_reason": "Please indicate the appointment reason."
+  },
+
+  "common": {
+      "system_title": "Management System",
+    "create": "Create",
+    "cancel": "Cancel",
+    "close": "Close",
+    "loading": "Loading…",
+    "loadingError": "Profile loading error",
+    "save": "Save",
+    "saving": "Saving…",
+    "delete": "Delete",
+    "reset": "Reset",
+    "logout": "Logout",
+    "confirmLogout": "Are you sure you want to log out?",
+    "updating": "Updating…",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "email": "Email",
+    "phone": "Phone",
+    "username": "Username",
+    "back": "Previous",
+    "next": "Next",
+    "creating": "Creating...",
+    "sending": "Sending…"
+  },
+
+  "settings": {
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "updatePassword": "Update password",
+    "passwordMismatch": "Passwords do not match.",
+    "passwordLengthError": "Password must contain at least 8 characters.",
+    "passwordUpdateSuccess": "Password updated successfully.",
+    "passwordUpdateError": "Error updating password.",
+    "selectDepartment": "Select a department",
+    "title": "Professional settings",
+    "subtitle": "Manage your information, preferences and security.",
+    "profile": "Profile",
+    "preferences": "Preferences",
+    "security": "Security",
+    "quickActions": "Quick actions",
+    "editProfile": "Edit profile",
+    "saveChanges": "Save changes",
+    "savePreferences": "Save preferences",
+    "personalInfo": "Personal information",
+    "personalInfoDesc": "Update your contact details and information.",
+    "professionalInfo": "Professional information",
+    "medicalLicense": "Medical license",
+    "specialty": "Specialty",
+    "department": "Department",
+    "joinDate": "Join date",
+    "memberSince": "Member since",
+    "profilePhoto": "Profile photo",
+    "photoRequirements": "Accepted formats: JPG, PNG, GIF (5MB max).",
+    "uploadPhoto": "Upload photo",
+    "removePhoto": "Remove photo",
+    "emailUsage": "Your email will be used for notifications and login.",
+    "phoneFormat": "Format: +212 6 12 34 56 78",
+    "languageDisplay": "Interface language",
+    "interfaceLanguage": "Display language",
+    "notificationPreferences": "Notification preferences",
+    "emailNotifications": "Email notifications",
+    "emailDesc": "Receive important updates by email.",
+    "smsNotifications": "SMS notifications",
+    "smsDesc": "Receive quick alerts on your phone.",
+    "whatsappNotifications": "WhatsApp notifications",
+    "whatsappDesc": "Receive messages via WhatsApp.",
+    "automaticReminders": "Automatic reminders",
+    "remindersDesc": "Receive reminders for your appointments.",
+    "clinicNews": "Clinic news",
+    "newsDesc": "Stay informed about news and announcements.",
+    "personalCode": "Personal code",
+    "newCode": "New code",
+    "confirmCode": "Confirm code",
+    "enterNewCode": "Enter new code",
+    "repeatNewCode": "Repeat new code",
+    "updateCode": "Update personal code",
+    "twoFactorAuth": "Two-factor authentication",
+    "twoStepVerification": "Two-step verification",
+    "twoStepDesc": "Add an extra layer of security to your account.",
+    "twoFactorEnabled": "Two-factor authentication enabled.",
+    "activeSessions": "Active sessions",
+    "currentSession": "Current session",
+    "currentBrowser": "Current browser",
+    "exportData": "Export my data",
+    "personalInfoShort": "Personal information"
+  },
+
+  "export": {
+    "patient_name": "Patient name",
+    "doctor": "Doctor",
+    "type": "Appointment type",
+    "room": "Room",
+    "date": "Date",
+    "time": "Time",
+    "status": "Status",
+    "phone": "Phone",
+    "email": "Email",
+    "duration": "Duration",
+    "reason": "Reason",
+    "last_update": "Last update"
+  },
+
+  "history": {
+    "title": "Appointments History",
+    "subtitle": "Consult or export complete appointments history"
+  },
+
+  "direction": {
+    "searchUsers": "Search user",
+    "title": "Management Space",
+    "subtitle": "Manage staff and clinic settings",
+    "users": "Users",
+    "createUser": "Create user",
+    "createUserDescription": "Add a new user to Riviera Clinic",
+    "userManagement": "User management",
+    "userManagementDescription": "View, delete or modify existing users.",
+    "user": "User",
+    "roleDepartment": "Role / Department",
+    "noUsersFound": "No users found",
+    "noResults": "Try expanding your search",
+    "deleteUser": "Delete user",
+    "deleteConfirmation": "Are you sure you want to delete {{name}}? This action is irreversible.",
+    "page": "Page",
+    "of": "of",
+    "results": "results",
+    "preferencesDescription": "Customize your language, theme and notification preferences.",
+    "securityDescription": "Update your password and manage your account security.",
+    "securityRecommended": "Recommended security",
+    "twoFactorRecommendation": "Enable two-step verification to enhance security.",
+    "userInformation": "User information",
+    "lastLogin": "Last login"
+  },
+
+  "roles": {
+    "doctor": "Doctor",
+    "secretary": "Secretary",
+    "direction": "Management"
+  },
+
+  "secretary": {
+    "title": "Secretary Settings",
+    "subtitle": "Manage your secretary preferences and tools",
+    "profileDescription": "Manage your personal and professional information",
+    "preferencesTitle": "Secretary Preferences",
+    "preferencesDescription": "Customize your work tools and preferences",
+    "securityDescription": "Manage your account security and passwords",
+    "actionsDescription": "Quick access to common tools and actions",
+    
+    "scheduleSettings": "Schedule Settings",
+    "workShift": "Work Shift",
+    "shiftDescription": "Define your working time slot",
+    "postExtension": "Position / Extension",
+    "autoConfirmAppointments": "Auto-confirm appointments",
+    "autoConfirmDescription": "Appointments will be confirmed automatically without manual validation",
+    
+    "whatsappIntegration": "WhatsApp Integration",
+    "whatsappApiEnabled": "WhatsApp API enabled",
+    "whatsappApiDescription": "Use WhatsApp API to send reminders",
+    
+    "quickActions": "Quick Actions",
+    "pendingAppointments": "Pending appointments",
+    "whatsappReminders": "WhatsApp reminders",
+    "sendReminders": "Send reminders",
+    "export": "Export",
+    "secretaryData": "Secretary data",
+    
+    "tools": "Tools",
+    "openSharedCalendar": "Open shared calendar",
+    "createInternalNote": "Create internal note",
+    
+    "secretarySettings": "Secretary settings",
+    "viewPendingAppointments": "View pending appointments",
+    "sendWhatsappReminders": "Send WhatsApp reminders"
+  },
+
+  "analytics": {
+    "title": "Referrals Dashboard",
+    "subtitle": "Referral analysis and tracking",
+    "loading": "Loading data...",
+    "loading_list": "Loading list…",
+    "no_data": "No data available.",
+    "no_results": "No results found.",
+    "results": "result(s) found",
+    "error_loading": "Error loading data.",
+    "error_analytics": "Analytics error: {error}",
+    "error_raw": "Raw data error: {error}",
+    
+    "filters": {
+      "presets": {
+        "today": "Today",
+        "7d": "7d",
+        "30d": "30d",
+        "custom": "Custom"
+      },
+      "labels": {
+        "from": "From",
+        "to": "To",
+        "doctor": "Doctor",
+        "specialty": "Specialty",
+        "insurance": "Insurance",
+        "status": "Status",
+        "search": "Search"
+      },
+      "placeholders": {
+        "doctor": "All doctors",
+        "specialty": "All specialties",
+        "insurance": "All insurances",
+        "status": "All statuses",
+        "search": "patient, doctor…",
+        "search_detailed": "Search…"
+      },
+      "buttons": {
+        "reset": "Reset",
+        "export_agg": "Export agg.",
+        "export_raw": "Export raw",
+        "export_agg_full": "Export aggregated",
+        "export_raw_full": "Export raw",
+        "done": "Done",
+        "clear": "Clear"
+      }
+    },
+    
+    "charts": {
+      "referrals_vs_confirmed": "Referrals vs Confirmed",
+      "by_doctor": "Referrals by doctor",
+      "by_specialty": "Distribution by specialty",
+      "by_insurance": "Insurance mix",
+      "funnel": "Funnel: Referrals → Appointments → Arrived",
+      "series": {
+        "referrals": "Referrals",
+        "confirmed": "Confirmed"
+      },
+      "funnel_steps": {
+        "referrals": "Referrals",
+        "appointments": "Appointments (created)",
+        "arrived": "Arrived"
+      }
+    },
+    
+    "raw_data": {
+      "title": "Referrals (raw)",
+      "rows_count": "row(s)",
+      "export": "Export (raw)",
+      "headers": {
+        "id": "ID",
+        "patient": "Patient",
+        "phone": "Phone",
+        "email": "Email",
+        "insurance": "Insurance",
+        "specialty": "Specialty",
+        "doctor": "Doctor",
+        "sent_at": "Sent at",
+        "status": "Status",
+        "arrived_at": "Arrived at"
+      }
+    },
+    
+    "status": {
+      "sent": "Sent",
+      "arrived": "Arrived",
+      "cancelled": "Cancelled"
+    },
+    
+    "priority": {
+      "urgent": "Urgent",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "normal": "Normal"
+    },
+    
+    "mobile_cards": {
+      "phone": "Phone:",
+      "email": "Email:",
+      "insurance": "Insur.:",
+      "specialty": "Spec.:",
+      "doctor": "Doctor:",
+      "sent": "Sent:",
+      "arrived": "Arrived:"
+    }
+  }
 }

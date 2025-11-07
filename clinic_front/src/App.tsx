@@ -3,23 +3,35 @@ import { AuthProvider, useAuth } from "./auth/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AppLayout from "./components/AppLayout";
 
+// ======== AUTH ========
 import Login from "./features/auth/Login";
 
+// ======== APPOINTMENTS ========
 import CalendarPage from "./features/appointments/CalendarPage";
+import PatientHistoryExport from "./features/appointments/PatientHistoryExport";
+
+// ======== REFERRALS ========
 import NewReferral from "./features/referrals/NewReferral";
 import MyReferrals from "./features/referrals/MyReferrals";
 
-import NotificationsPage from "./features/notifications/NotificationsPage";
+// ======== SECRETARY ========
 import SecretaryDashboard from "./features/secretary/SecretaryDashboard";
-import Patients from "./features/secretary/WhatsApp Reminders"; 
-import Patient from "./features/secretary/SecretaryAllreferals"; 
-import Appointments from "./features/appointments/AppointmentsPages"; 
+import WhatsAppReminders from "./features/secretary/WhatsApp Reminders";
+import SecretaryAllReferrals from "./features/secretary/SecretaryAllreferals";
 
+// ======== DIRECTION ========
 import Analytics from "./features/direction/statistique";
-import Referrals from "./features/direction/SupervisionReferences";
+
+import ProfileDir from "./features/setting/DirectionAdminPage";
+
+// ======== SETTINGS ========
 import Profile from "./features/setting/medecin";
 import ProfileSEC from "./features/setting/Secrétaireprofile";
-import ProfileDir from "./features/setting/DirectionAdminPage";
+
+
+// ======== NOTIFICATIONS ========
+import NotificationsPage from "./features/notifications/NotificationsPage";
+
 function HomeRedirect() {
   const { role } = useAuth();
   if (role === "MEDECIN") return <Navigate to="/referrals/mine" replace />;
@@ -27,15 +39,19 @@ function HomeRedirect() {
   return <Navigate to="/login" replace />;
 }
 
-function NotFound() { return <Navigate to="/" replace />; }
+function NotFound() {
+  return <Navigate to="/" replace />;
+}
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          {/* === LOGIN === */}
           <Route path="/login" element={<Login />} />
 
+          {/* === HOME REDIRECT === */}
           <Route
             path="/"
             element={
@@ -47,31 +63,19 @@ export default function App() {
             }
           />
 
-          {/* ✅ NOUVELLE route Dashboard cohérente */}
+          {/* === DASHBOARD === */}
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute allow={["DIRECTION", "SECRETAIRE"]}>
                 <AppLayout>
-            <SecretaryDashboard />
+                  <SecretaryDashboard />
                 </AppLayout>
               </ProtectedRoute>
             }
           />
 
-          <Route
-            path="/notifications"
-            element={
-              <ProtectedRoute allow={["MEDECIN"]}>
-                <AppLayout>
-                  <NotificationsPage />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-
-          
-
+          {/* === CALENDAR === */}
           <Route
             path="/calendar"
             element={
@@ -82,36 +86,44 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-<Route
+
+          {/* === PATIENTS === */}
+          <Route
             path="/patients"
             element={
               <ProtectedRoute allow={["DIRECTION", "SECRETAIRE"]}>
                 <AppLayout>
-                  <Patients />
+                  <WhatsAppReminders />
                 </AppLayout>
               </ProtectedRoute>
             }
           />
+
+          {/* === APPOINTMENTS HISTORY EXPORT === */}
           <Route
-            path="/Appointments"
+            path="/appointments"
             element={
               <ProtectedRoute allow={["DIRECTION", "SECRETAIRE"]}>
                 <AppLayout>
-                  <Appointments />
+                  <PatientHistoryExport />
                 </AppLayout>
               </ProtectedRoute>
             }
           />
+
+          {/* === ALL REFERRALS === */}
           <Route
             path="/patient"
             element={
               <ProtectedRoute allow={["DIRECTION", "SECRETAIRE"]}>
                 <AppLayout>
-                  <Patient />
+                  <SecretaryAllReferrals />
                 </AppLayout>
               </ProtectedRoute>
             }
           />
+
+          {/* === REFERRALS MEDECIN === */}
           <Route
             path="/referrals/new"
             element={
@@ -133,47 +145,22 @@ export default function App() {
             }
           />
 
-          
- <Route
-            path="/analtycs"
-            element={
-              <ProtectedRoute allow={["DIRECTION"]}>
-                <AppLayout>
-                  <Analytics />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          /> <Route
-            path="/Analytics"
-            element={
-              <ProtectedRoute allow={["DIRECTION"]}>
-                <AppLayout>
-                  <Analytics />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          /> <Route
-            path="/Referrals"
-            element={
-              <ProtectedRoute allow={["DIRECTION"]}>
-                <AppLayout>
-                  <Referrals />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
+          {/* === ANALYTICS & REFERRALS (DIRECTION) === */}
           <Route
-            path="/ProfileSEC"
+            path="/analytics"
             element={
-              <ProtectedRoute allow={["SECRETAIRE"]}>
+              <ProtectedRoute allow={["DIRECTION"]}>
                 <AppLayout>
-                  <ProfileSEC />
+                  <Analytics />
                 </AppLayout>
               </ProtectedRoute>
             }
           />
-         <Route
-            path="/Profile"
+         
+
+          {/* === PROFILES === */}
+          <Route
+            path="/profile"
             element={
               <ProtectedRoute allow={["MEDECIN"]}>
                 <AppLayout>
@@ -182,8 +169,18 @@ export default function App() {
               </ProtectedRoute>
             }
           />
- <Route
-            path="/ProfileDir"
+          <Route
+            path="/profile-sec"
+            element={
+              <ProtectedRoute allow={["SECRETAIRE"]}>
+                <AppLayout>
+                  <ProfileSEC />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile-dir"
             element={
               <ProtectedRoute allow={["DIRECTION"]}>
                 <AppLayout>
@@ -192,6 +189,20 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* === NOTIFICATIONS === */}
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute allow={["MEDECIN"]}>
+                <AppLayout>
+                  <NotificationsPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* === FALLBACK === */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AuthProvider>

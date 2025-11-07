@@ -1,299 +1,454 @@
-// src/features/secretary/SecretaryDashboard.tsx
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  listAppointments,
+  updateAppointmentStatus,
+} from "../../api/secretary";
 
 /* ========= Types ========= */
-type Status = "confirmed" | "to_call" | "cancelled";
+type Status = "confirmed" | "to_call" | "cancelled" | "pending" | "completed";
 
-type Req = {
-  id: string;
-  patientId: number;
-  patient: string;
-  phone: string;
-  email?: string;
-  desiredAt: string;
-  reason: string;
-  insurance: string;
-  status: Status;
-};
-
-type Patient = {
+type Appointment = {
   id: number;
-  first_name: string;
-  last_name: string;
-  phone: string;
-  birth_date?: string;
-  insurance: string;
-  email?: string;
-};
-
-type PastAppointment = {
-  id: number;
-  patient_id: number;
+  patient_name: string;
   date: string;
-  doctor_name: string;
-  specialty: string;
-  status: "pending" | "confirmed" | "to_call" | "canceled";
+  time: string;
+  reason?: string;
+  notes?: string;
+  status: Status;
+  doctor_full_name?: string;
+  physician?: string;
+  phone?: string;
+  email?: string;
 };
 
-/* ========= Mock data ========= */
-const REQUESTS_INIT: Req[] = [
-  {
-    id: "r1",
-    patientId: 1,
-    patient: "Ahmed El Mansouri",
-    phone: "0612-345-678",
-    email: "ahmed@example.com",
-    desiredAt: "2025-09-25T10:00:00",
-    reason: "Douleurs abdominales",
-    insurance: "CNOPS",
-    status: "to_call",
-  },
-  {
-    id: "r2",
-    patientId: 2,
-    patient: "Sara Benali",
-    phone: "0612-222-333",
-    email: "sara@mail.com",
-    desiredAt: "2025-09-26T11:00:00",
-    reason: "Fièvre élevée",
-    insurance: "AXA",
-    status: "confirmed",
-  },
-];
-
-const PATIENTS: Patient[] = [
-  { id: 1, first_name: "Ahmed", last_name: "El Mansouri", phone: "0612-345-678", birth_date: "1990-05-20", insurance: "CNOPS", email: "ahmed@example.com" },
-  { id: 2, first_name: "Sara", last_name: "Benali", phone: "0612-222-333", birth_date: "1988-10-11", insurance: "AXA", email: "sara@mail.com" },
-];
-
-const APPTS: PastAppointment[] = [
-  { id: 101, patient_id: 1, date: "2025-08-02T10:00:00", doctor_name: "Dr. Karim", specialty: "Cardiologie", status: "confirmed" },
-  { id: 102, patient_id: 1, date: "2025-05-15T09:30:00", doctor_name: "Dr. Fatima", specialty: "Radiologie", status: "canceled" },
-  { id: 103, patient_id: 2, date: "2025-07-22T15:00:00", doctor_name: "Dr. Salma", specialty: "Dermatologie", status: "pending" },
-];
-
-/* ========= Helpers ========= */
-const statusBadge = (s: Status) => {
-  const map: Record<Status, string> = {
-    confirmed: "bg-green-100 text-green-700",
-    to_call: "bg-amber-100 text-amber-700",
-    cancelled: "bg-rose-100 text-rose-700",
-  };
-  const label: Record<Status, string> = {
-    confirmed: "Confirmé",
-    to_call: "À rappeler",
-    cancelled: "Annulé",
-  };
-  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${map[s]}`}>{label[s]}</span>;
-};
-
-const statusLabel = (s: PastAppointment["status"]) => {
-  switch (s) {
-    case "confirmed": return <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">Confirmé</span>;
-    case "pending":   return <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700">En attente</span>;
-    case "to_call":   return <span className="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-700">À rappeler</span>;
-    case "canceled":  return <span className="px-2 py-1 rounded-full text-xs bg-rose-100 text-rose-700">Annulé</span>;
-    default:          return <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">{s}</span>;
-  }
-};
-
-const fmtDateTime = (iso?: string) => iso ? new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "—";
-
-/* ========= Main Page ========= */
+/* ========= Component ========= */
 export default function SecretaryDashboard() {
-  const [requests, setRequests] = useState(REQUESTS_INIT);
-  const [q, setQ] = useState("");
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+  const { i18n } = useTranslation();
+  const lang = i18n.language || "fr";
 
-  const filtered = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    if (!term) return requests;
-    return requests.filter(r =>
-      r.patient.toLowerCase().includes(term) ||
-      r.phone.includes(term) ||
-      (r.email ?? "").toLowerCase().includes(term) ||
-      r.reason.toLowerCase().includes(term)
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [disabledIds, setDisabledIds] = useState<number[]>([]);
+  const [selected, setSelected] = useState<Appointment | null>(null);
+  const [history, setHistory] = useState<Appointment[]>([]);
+
+  /* ========= Traduction dynamique des badges ========= */
+  const statusBadge = (s: Status) => {
+    const map: Record<Status, string> = {
+      confirmed: "bg-green-100 text-green-700",
+      to_call: "bg-yellow-100 text-yellow-700",
+      cancelled: "bg-red-100 text-red-700",
+      pending: "bg-gray-100 text-gray-700",
+      completed: "bg-slate-100 text-slate-700",
+    };
+    const label: Record<Status, string> = {
+      confirmed: lang === "fr" ? "Confirmé" : "Confirmed",
+      to_call: lang === "fr" ? "À rappeler" : "To call back",
+      cancelled: lang === "fr" ? "Annulé" : "Cancelled",
+      pending: lang === "fr" ? "En attente" : "Pending",
+      completed: lang === "fr" ? "Terminé" : "Completed",
+    };
+    return (
+      <span
+        className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium ${map[s]}`}
+      >
+        {label[s]}
+      </span>
     );
-  }, [q, requests]);
-
-  const updateStatus = (id: string, status: Status) => {
-    setRequests(rs => rs.map(r => r.id === id ? { ...r, status } : r));
-    setOpenActionMenuId(null);
   };
 
-  const openPatient = (id: number) => {
-    const p = PATIENTS.find(x => x.id === id) ?? null;
-    if (p) setSelectedPatient(p);
+  const fmtDate = (d?: string, t?: string) =>
+    d
+      ? new Date(`${d}T${t ?? "00:00"}`).toLocaleString(
+          lang === "fr" ? "fr-FR" : "en-GB"
+        )
+      : "—";
+
+  /* ========= Charger les données ========= */
+  useEffect(() => {
+    const refresh = async () => {
+      setLoading(true);
+      try {
+        const appts = await listAppointments({ ordering: "-date" });
+        setAppointments(appts);
+      } catch (err) {
+        console.error("❌ Erreur :", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    refresh();
+    window.addEventListener("appointment_created", refresh);
+    return () => window.removeEventListener("appointment_created", refresh);
+  }, []);
+
+  /* ========= Filtrage ========= */
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return appointments;
+    return appointments.filter(
+      (a) =>
+        a.patient_name.toLowerCase().includes(q) ||
+        a.phone?.includes(q) ||
+        a.email?.toLowerCase().includes(q)
+    );
+  }, [appointments, search]);
+
+  /* ========= Actions ========= */
+  const changeStatus = async (id: number, status: Status) => {
+    if (disabledIds.includes(id)) return;
+    setDisabledIds((prev) => [...prev, id]);
+    try {
+      await updateAppointmentStatus(id, status);
+      setAppointments((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, status } : a))
+      );
+    } catch (e) {
+      console.error("Erreur :", e);
+    } finally {
+      setDisabledIds((prev) => prev.filter((x) => x !== id));
+    }
   };
 
-  const history = useMemo(() => selectedPatient ? APPTS.filter(a => a.patient_id === selectedPatient.id) : [], [selectedPatient]);
+  const openDetails = (appt: Appointment) => {
+    setSelected(appt);
+    const hist = appointments.filter(
+      (a) =>
+        a.patient_name.trim().toLowerCase() ===
+          appt.patient_name.trim().toLowerCase() && a.id !== appt.id
+    );
+    setHistory(hist);
+  };
 
+  const closeDetails = () => {
+    setSelected(null);
+    setHistory([]);
+  };
+
+  /* ========= Rendu ========= */
   return (
-    <div className="space-y-6 px-4 sm:px-6 lg:px-8">
+    <div className="space-y-6 px-3 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Tableau de bord — Rendez-vous</h1>
-          <p className="text-sm text-slate-600">Demandes reçues via le site · mode mobile optimisé</p>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {lang === "fr"
+              ? "Tableau de bord — Rendez-vous"
+              : "Dashboard — Appointments"}
+          </h1>
+          <p className="text-sm text-slate-600">
+            {lang === "fr"
+              ? "Gestion dynamique des rendez-vous patients"
+              : "Dynamic management of patient appointments"}
+          </p>
         </div>
 
-        <div className="flex gap-2 w-full sm:w-auto">
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="🔍 Rechercher nom, téléphone, motif…"
-            className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-0 focus:border-blue-500"
-            aria-label="Recherche"
-          />
-        </div>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={
+            lang === "fr"
+              ? "🔍 Rechercher patient, téléphone, email..."
+              : "🔍 Search patient, phone, email..."
+          }
+          className="flex-1 sm:w-72 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-0 focus:border-blue-500"
+        />
       </div>
 
-      {/* Desktop Table */}
-      <div className="hidden md:block overflow-hidden rounded-xl border border-slate-200 bg-white shadow">
-        <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-slate-600">
-            <tr>
-              <th className="px-4 py-3 text-left">Patient</th>
-              <th className="px-4 py-3 text-left">Date souhaitée</th>
-              <th className="px-4 py-3 text-left">Motif</th>
-              <th className="px-4 py-3 text-left">Assurance</th>
-              <th className="px-4 py-3 text-left">Contact</th>
-              <th className="px-4 py-3 text-left">Statut</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(r => (
-              <tr key={r.id} className="border-t hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium text-slate-900">{r.patient}</td>
-                <td className="px-4 py-3 text-slate-700">{fmtDateTime(r.desiredAt)}</td>
-                <td className="px-4 py-3 text-slate-700">{r.reason}</td>
-                <td className="px-4 py-3 text-slate-700">{r.insurance}</td>
-                <td className="px-4 py-3 text-slate-700">{r.phone}<br/><span className="text-xs text-slate-500">{r.email ?? "—"}</span></td>
-                <td className="px-4 py-3">{statusBadge(r.status)}</td>
-                <td className="px-4 py-3 text-right space-x-2">
-                  <button onClick={() => openPatient(r.patientId)} className="rounded-md bg-slate-200 px-3 py-1 text-xs hover:bg-slate-300">Voir</button>
-                  <button onClick={() => updateStatus(r.id, "confirmed")} className="rounded-md bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700">Confirmer</button>
-                  <button onClick={() => updateStatus(r.id, "to_call")} className="rounded-md bg-amber-500 px-3 py-1 text-xs text-white hover:bg-amber-600">Rappeler</button>
-                  <button onClick={() => updateStatus(r.id, "cancelled")} className="rounded-md bg-rose-500 px-3 py-1 text-xs text-white hover:bg-rose-600">Annuler</button>
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500">Aucune demande trouvée</td></tr>}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile cards */}
-      <div className="md:hidden space-y-3">
-        {filtered.map(r => (
-          <article key={r.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <div className="font-medium text-slate-900 truncate">{r.patient}</div>
-                    <div className="text-xs text-slate-500">{fmtDateTime(r.desiredAt)}</div>
-                  </div>
-
-                  {/* actions menu trigger */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setOpenActionMenuId(openActionMenuId === r.id ? null : r.id)}
-                      className="rounded-full p-1 hover:bg-slate-100"
-                      aria-label="Actions"
-                    >
-                      <svg className="h-5 w-5 text-slate-600" viewBox="0 0 24 24" fill="currentColor"><path d="M12 7a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" /></svg>
-                    </button>
-
-                    {openActionMenuId === r.id && (
-                      <div className="absolute right-0 mt-2 w-44 rounded-lg border border-slate-200 bg-white shadow-lg z-20">
-                        <button onClick={() => { openPatient(r.patientId); setOpenActionMenuId(null); }}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Voir détails</button>
-                        <button onClick={() => updateStatus(r.id, "confirmed")}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Confirmer</button>
-                        <button onClick={() => updateStatus(r.id, "to_call")}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50">À rappeler</button>
-                        <button onClick={() => updateStatus(r.id, "cancelled")}
-                          className="w-full text-left px-3 py-2 text-sm text-rose-600 hover:bg-slate-50">Annuler</button>
+      {/* Table (Desktop) */}
+      {!loading && (
+        <>
+          {/* Version Desktop */}
+          <div className="hidden md:block overflow-hidden rounded-xl border border-slate-200 bg-white shadow">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="px-4 py-3 text-left">{lang === "fr" ? "Patient" : "Patient"}</th>
+                  <th className="px-4 py-3 text-left">{lang === "fr" ? "Date" : "Date"}</th>
+                  <th className="px-4 py-3 text-left">{lang === "fr" ? "Médecin" : "Doctor"}</th>
+                  <th className="px-4 py-3 text-left">{lang === "fr" ? "Contact" : "Contact"}</th>
+                  <th className="px-4 py-3 text-left">{lang === "fr" ? "Statut" : "Status"}</th>
+                  <th className="px-4 py-3 text-right">{lang === "fr" ? "Actions" : "Actions"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((a) => (
+                  <tr
+                    key={a.id}
+                    className="border-t hover:bg-slate-50 transition-colors"
+                  >
+                    <td className="px-4 py-3 font-medium text-slate-900">
+                      {a.patient_name}
+                    </td>
+                    <td className="px-4 py-3">{fmtDate(a.date, a.time)}</td>
+                    <td className="px-4 py-3">
+                      {a.doctor_full_name || a.physician || "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {a.phone}
+                      <br />
+                      <span className="text-xs text-slate-500">
+                        {a.email ?? "—"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">{statusBadge(a.status)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <button
+                          onClick={() => openDetails(a)}
+                          className="rounded-md bg-slate-200 px-3 py-1 text-xs font-medium hover:bg-slate-300"
+                        >
+                          {lang === "fr" ? "Voir" : "View"}
+                        </button>
+                        <button
+                          onClick={() => changeStatus(a.id, "confirmed")}
+                          disabled={disabledIds.includes(a.id)}
+                          className={`rounded-md px-3 py-1 text-xs font-semibold text-white ${
+                            disabledIds.includes(a.id)
+                              ? "bg-gray-400 cursor-not-allowed"
+                              : "bg-emerald-600 hover:bg-emerald-700"
+                          }`}
+                        >
+                          {lang === "fr" ? "Confirmer" : "Confirm"}
+                        </button>
+                        <button
+                          onClick={() => changeStatus(a.id, "to_call")}
+                          disabled={disabledIds.includes(a.id)}
+                          className={`rounded-md px-3 py-1 text-xs font-semibold text-white ${
+                            disabledIds.includes(a.id)
+                              ? "bg-gray-400 cursor-not-allowed"
+                              : "bg-yellow-500 hover:bg-yellow-600"
+                          }`}
+                        >
+                          {lang === "fr" ? "Rappeler" : "Call back"}
+                        </button>
+                        <button
+                          onClick={() => changeStatus(a.id, "cancelled")}
+                          disabled={disabledIds.includes(a.id)}
+                          className={`rounded-md px-3 py-1 text-xs font-semibold text-white ${
+                            disabledIds.includes(a.id)
+                              ? "bg-gray-400 cursor-not-allowed"
+                              : "bg-rose-500 hover:bg-rose-600"
+                          }`}
+                        >
+                          {lang === "fr" ? "Annuler" : "Cancel"}
+                        </button>
                       </div>
-                    )}
-                  </div>
-                </div>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="px-4 py-8 text-center text-slate-500"
+                    >
+                      {lang === "fr"
+                        ? "Aucun rendez-vous trouvé"
+                        : "No appointments found"}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-                <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-slate-700">
-                  <div>
-                    <div className="text-xs text-slate-500">Motif</div>
-                    <div className="font-medium truncate">{r.reason}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-500">Assurance</div>
-                    <div className="font-medium">{r.insurance}</div>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between">
-                  <div className="text-xs text-slate-500">{r.phone}</div>
-                  <div>{statusBadge(r.status)}</div>
-                </div>
+          {/* Version Mobile */}
+          <div className="md:hidden space-y-4">
+            {filtered.length === 0 ? (
+              <div className="text-center py-8 text-slate-500">
+                {lang === "fr"
+                  ? "Aucun rendez-vous trouvé"
+                  : "No appointments found"}
               </div>
-            </div>
-          </article>
-        ))}
-        {filtered.length === 0 && <div className="text-center text-slate-500">Aucune demande</div>}
-      </div>
-
-      {/* Drawer / Slide-over (FULLSCREEN on mobile) */}
-      {selectedPatient && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setSelectedPatient(null)} />
-          <div className="absolute right-0 top-0 h-full w-full sm:w-[480px] bg-white shadow-2xl p-5 overflow-y-auto">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">Fiche patient</h2>
-                <p className="text-sm text-slate-500">{selectedPatient.last_name} {selectedPatient.first_name}</p>
-              </div>
-              <button onClick={() => setSelectedPatient(null)} className="rounded-md border px-3 py-1 text-sm">Fermer</button>
-            </div>
-
-            <div className="mt-5 grid grid-cols-1 gap-3">
-              <div>
-                <div className="text-xs text-slate-500">Téléphone</div>
-                <div className="font-medium">{selectedPatient.phone}</div>
-              </div>
-              <div>
-                <div className="text-xs text-slate-500">Email</div>
-                <div className="font-medium">{selectedPatient.email ?? "—"}</div>
-              </div>
-              <div>
-                <div className="text-xs text-slate-500">Naissance</div>
-                <div className="font-medium">{selectedPatient.birth_date ?? "—"}</div>
-              </div>
-              <div>
-                <div className="text-xs text-slate-500">Assurance</div>
-                <div className="font-medium">{selectedPatient.insurance}</div>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <h3 className="text-sm font-semibold text-slate-900">Historique des rendez-vous</h3>
-              <div className="mt-3 divide-y rounded-md border">
-                {history.length === 0 && <div className="px-3 py-6 text-center text-slate-500">Aucun RDV passé</div>}
-                {history.map(h => (
-                  <div key={h.id} className="flex items-center justify-between px-3 py-3">
+            ) : (
+              filtered.map((a) => (
+                <div
+                  key={a.id}
+                  className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm"
+                >
+                  <div className="flex justify-between items-start mb-3">
                     <div>
-                      <div className="text-sm font-medium">{new Date(h.date).toLocaleString("fr-FR")}</div>
-                      <div className="text-xs text-slate-500">{h.doctor_name} • {h.specialty}</div>
+                      <h3 className="font-semibold text-slate-900">
+                        {a.patient_name}
+                      </h3>
+                      <p className="text-sm text-slate-600 mt-1">
+                        {fmtDate(a.date, a.time)}
+                      </p>
                     </div>
-                    <div>{statusLabel(h.status)}</div>
+                    {statusBadge(a.status)}
+                  </div>
+
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">
+                        {lang === "fr" ? "Médecin" : "Doctor"}:
+                      </span>
+                      <span>{a.doctor_full_name || a.physician || "—"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">
+                        {lang === "fr" ? "Téléphone" : "Phone"}:
+                      </span>
+                      <span>{a.phone || "—"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Email:</span>
+                      <span className="text-right">{a.email || "—"}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => openDetails(a)}
+                      className="flex-1 min-w-[80px] rounded-md bg-slate-200 px-3 py-2 text-xs font-medium hover:bg-slate-300"
+                    >
+                      {lang === "fr" ? "Voir" : "View"}
+                    </button>
+                    <button
+                      onClick={() => changeStatus(a.id, "confirmed")}
+                      disabled={disabledIds.includes(a.id)}
+                      className={`flex-1 min-w-[80px] rounded-md px-3 py-2 text-xs font-semibold text-white ${
+                        disabledIds.includes(a.id)
+                          ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-emerald-600 hover:bg-emerald-700"
+                      }`}
+                    >
+                      {lang === "fr" ? "Confirmer" : "Confirm"}
+                    </button>
+                    <button
+                      onClick={() => changeStatus(a.id, "to_call")}
+                      disabled={disabledIds.includes(a.id)}
+                      className={`flex-1 min-w-[80px] rounded-md px-3 py-2 text-xs font-semibold text-white ${
+                        disabledIds.includes(a.id)
+                          ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-yellow-500 hover:bg-yellow-600"
+                      }`}
+                    >
+                      {lang === "fr" ? "Rappeler" : "Call back"}
+                    </button>
+                    <button
+                      onClick={() => changeStatus(a.id, "cancelled")}
+                      disabled={disabledIds.includes(a.id)}
+                      className={`flex-1 min-w-[80px] rounded-md px-3 py-2 text-xs font-semibold text-white ${
+                        disabledIds.includes(a.id)
+                          ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-rose-500 hover:bg-rose-600"
+                      }`}
+                    >
+                      {lang === "fr" ? "Annuler" : "Cancel"}
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Drawer latéral (card de détails) */}
+      {selected && (
+        <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={closeDetails}
+          />
+          <div className="absolute right-0 top-0 h-full w-full sm:w-[480px] bg-white shadow-2xl p-5 overflow-y-auto rounded-l-2xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">
+                {lang === "fr"
+                  ? "Détails du rendez-vous"
+                  : "Appointment details"}
+              </h2>
+              <button
+                onClick={closeDetails}
+                className="rounded-md border px-3 py-1 text-sm hover:bg-slate-50"
+              >
+                {lang === "fr" ? "Fermer" : "Close"}
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <div>
+                <div className="text-xs text-slate-500">
+                  {lang === "fr" ? "Patient" : "Patient"}
+                </div>
+                <div className="font-medium">{selected.patient_name}</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500">
+                  {lang === "fr" ? "Date & heure" : "Date & time"}
+                </div>
+                <div className="font-medium">
+                  {fmtDate(selected.date, selected.time)}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500">
+                  {lang === "fr" ? "Médecin" : "Doctor"}
+                </div>
+                <div className="font-medium">
+                  {selected.doctor_full_name || selected.physician || "—"}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500">
+                  {lang === "fr" ? "Contact" : "Contact"}
+                </div>
+                <div className="font-medium">
+                  {selected.phone} / {selected.email ?? "—"}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500">
+                  {lang === "fr" ? "Motif" : "Reason"}
+                </div>
+                <div className="font-medium whitespace-pre-wrap break-words">
+                  {selected.reason || selected.notes || "—"}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500">
+                  {lang === "fr" ? "Statut" : "Status"}
+                </div>
+                {statusBadge(selected.status)}
+              </div>
+            </div>
+
+            <div className="mt-8">
+              <h3 className="text-sm font-semibold text-slate-900">
+                {lang === "fr"
+                  ? "Historique des rendez-vous"
+                  : "Appointment history"}
+              </h3>
+              <div className="mt-3 divide-y rounded-md border">
+                {history.length === 0 && (
+                  <div className="px-3 py-6 text-center text-slate-500">
+                    {lang === "fr"
+                      ? "Aucun autre rendez-vous enregistré"
+                      : "No other appointments recorded"}
+                  </div>
+                )}
+                {history.map((h) => (
+                  <div
+                    key={h.id}
+                    className="flex items-start justify-between px-3 py-3"
+                  >
+                    <div>
+                      <div className="text-sm font-medium">
+                        {fmtDate(h.date, h.time)}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {h.doctor_full_name || h.physician || "—"}
+                      </div>
+                    </div>
+                    <div>{statusBadge(h.status)}</div>
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-2">
-              <button onClick={() => setSelectedPatient(null)} className="rounded-lg border px-3 py-2 text-sm">Fermer</button>
             </div>
           </div>
         </div>
@@ -301,12 +456,3 @@ export default function SecretaryDashboard() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-

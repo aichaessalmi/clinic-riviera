@@ -1,80 +1,202 @@
-from rest_framework import viewsets, status
+from django.utils import translation
+from django.utils.dateparse import parse_datetime
+from django.db.models import Count
+from django.db.models.functions import TruncDate
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import viewsets, status, permissions, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.db.models import Count
-from .models import Referral
-from .serializers import ReferralSerializer
-from accounts.permissions import IsMedecin, IsDirection, IsDirectionOrSecretaire
-from utils.whatsapp import notify_doctor_whatsapp
+from rest_framework.permissions import AllowAny
+
+from .models import Referral, InterventionType, UrgencyLevel, Insurance
+from .serializers import (
+    ReferralSerializer,
+    ReferralCreateSerializer,
+    InsuranceSerializer,
+    InterventionTypeSerializer,
+    UrgencyLevelSerializer,
+)
+from appointments.models import Appointment
+
+
+# ======================================================
+#   PERMISSIONS PERSONNALISÉES
+# ======================================================
+
+class IsMedecin(permissions.BasePermission):
+    """Autorise uniquement les utilisateurs ayant le rôle 'MEDECIN'."""
+    def has_permission(self, request, view):
+        user = request.user
+        role = getattr(user, "role", "").upper()
+        print(f"🩺 [IsMedecin] user={user} role={role}")
+        return bool(user and user.is_authenticated and role == "MEDECIN")
+
+
+class IsDirection(permissions.BasePermission):
+    """Autorise uniquement les utilisateurs ayant le rôle 'DIRECTION'."""
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(user and user.is_authenticated and getattr(user, "role", "").upper() == "DIRECTION")
+
+
+class IsDirectionOrSecretaire(permissions.BasePermission):
+    """Autorise les utilisateurs 'DIRECTION' ou 'SECRETAIRE'."""
+    def has_permission(self, request, view):
+        user = request.user
+        role = getattr(user, "role", "").upper()
+        return bool(user and user.is_authenticated and role in {"DIRECTION", "SECRETAIRE"})
+
+
+# ======================================================
+#   VIEWSET: INSURANCE
+# ======================================================
+
+class InsuranceViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Insurance.objects.all().order_by("id")
+    serializer_class = InsuranceSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+# ======================================================
+#   VIEWSET: REFERRALS
+# ======================================================
 
 class ReferralViewSet(viewsets.ModelViewSet):
-    """
-    - Médecin: list/create ses propres références
-    - Secrétaire/Direction: peuvent consulter tous (list) si besoin
-    """
+    queryset = Referral.objects.all()
     serializer_class = ReferralSerializer
 
-    def get_queryset(self):
-        user = self.request.user
-        qs = Referral.objects.select_related("doctor").order_by("-created_at")
-        if not user.is_authenticated:
-            return Referral.objects.none()
-        if user.role == "MEDECIN":
-            return qs.filter(doctor=user)
-        # Secrétaire / Direction voient tout
-        return qs
+    def get_serializer_class(self):
+        return ReferralCreateSerializer if self.action == "create" else ReferralSerializer
 
-    def get_permissions(self):
-        if self.action in {"create"}:
-            return [IsMedecin()]
-        if self.action in {"list","retrieve"}:
-            # médecin voit ses refs; secré/direction voient tout
-            return [IsMedecin() or IsDirectionOrSecretaire()]
-        if self.action in {"partial_update","update","destroy"}:
-            # rarement utilisé; on peut restreindre aux rôles internes
-            return [IsDirectionOrSecretaire()]
-        return super().get_permissions()
+    def create(self, request, *args, **kwargs):
+        print("🩺 [CREATE] user=", request.user)
+        serializer = self.get_serializer(data=request.data, context={"request": request})
+        if not serializer.is_valid():
+            print("❌ Erreurs de validation :", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=["post"], permission_classes=[IsDirectionOrSecretaire])
-    def arrive(self, request, pk=None):
-        """
-        Secrétaire/Direction marquent 'arrived' + room_number et notifient le médecin
-        """
         try:
-            ref = Referral.objects.select_related("doctor").get(pk=pk)
-        except Referral.DoesNotExist:
-            return Response({"detail": "Référence introuvable."}, status=status.HTTP_404_NOT_FOUND)
+            instance = serializer.save()
+            print(f"✅ Référence créée ID={instance.id}")
+            return Response(ReferralSerializer(instance, context={"request": request}).data, status=201)
+        except Exception as e:
+            import traceback
+            print("🔥 ERREUR CREATE REFERRAL:")
+            traceback.print_exc()
+            return Response({"error": str(e)}, status=500)
 
-        room = request.data.get("room_number")
-        if not room:
-            return Response({"detail": "room_number est requis."}, status=status.HTTP_400_BAD_REQUEST)
 
-        ref.status = "arrived"
-        ref.room_number = room
-        ref.save()
-
-        # Notifier le médecin (stub)
-        # Ici, mets le téléphone du médecin si tu l'ajoutes au modèle User plus tard
-        notify_doctor_whatsapp(to_phone="", message=f"Votre patient '{ref.patient_name}' est arrivé (chambre {room}).")
-
-        return Response(ReferralSerializer(ref).data, status=status.HTTP_200_OK)
+# ======================================================
+#   VIEW: REFERRAL STATS
+# ======================================================
 
 class ReferralStatsView(APIView):
-    """
-    Direction: statistiques par médecin et par type d'intervention
-    """
-    permission_classes = [IsDirection]
+    permission_classes = [AllowAny]
 
-    def get(self, request):
-        by_doctor = (
-            Referral.objects.values("doctor__id","doctor__username")
-            .annotate(count=Count("id"))
-            .order_by("-count")
+    def get(self, request, *args, **kwargs):
+        from_param = request.GET.get("from")
+        to_param = request.GET.get("to")
+
+        qs = Referral.objects.all()
+        if from_param:
+            start = parse_datetime(from_param)
+            if start:
+                qs = qs.filter(created_at__gte=start)
+        if to_param:
+            end = parse_datetime(to_param)
+            if end:
+                qs = qs.filter(created_at__lte=end)
+
+        # Séries temporelles (date, referrals)
+        daily = (
+            qs.annotate(day=TruncDate("created_at"))
+            .values("day")
+            .annotate(referrals=Count("id"))
+            .order_by("day")
         )
-        by_intervention = (
-            Referral.objects.values("intervention")
-            .annotate(count=Count("id"))
-            .order_by("-count")
-        )
-        return Response({"by_doctor": list(by_doctor), "by_intervention": list(by_intervention)})
+        series = [{"date": d["day"].isoformat(), "referrals": d["referrals"], "confirmed": 0} for d in daily]
+
+        # Par médecin
+        by_doctor = [
+            {"name": d["doctor__username"] or "—", "value": d["count"]}
+            for d in qs.values("doctor__username").annotate(count=Count("id"))
+        ]
+
+        # Par spécialité (intervention)
+        by_specialty = [
+            {"name": s["intervention_type__name_fr"] or "Non défini", "value": s["count"]}
+            for s in qs.values("intervention_type__name_fr").annotate(count=Count("id"))
+        ]
+
+        # Par assurance
+        by_insurance = [
+            {"name": s["insurance__insurance_provider"] or "—", "value": s["count"]}
+            for s in qs.values("insurance__insurance_provider").annotate(count=Count("id"))
+        ]
+
+        # Funnel
+        funnel = {
+            "referrals": qs.count(),
+            "appointments": Appointment.objects.count(),
+            "arrived": qs.filter(status="arrived").count(),
+        }
+
+        facets = {
+            "doctors": list(qs.exclude(doctor__username=None).values_list("doctor__username", flat=True).distinct()),
+            "specialties": list(
+                qs.exclude(intervention_type__name_fr=None)
+                .values_list("intervention_type__name_fr", flat=True)
+                .distinct()
+            ),
+            "insurances": list(
+                qs.exclude(insurance__insurance_provider=None)
+                .values_list("insurance__insurance_provider", flat=True)
+                .distinct()
+            ),
+        }
+
+        return Response({
+            "series": series,
+            "by_doctor": by_doctor,
+            "by_specialty": by_specialty,
+            "by_insurance": by_insurance,
+            "funnel": funnel,
+            "facets": facets,
+        })
+
+
+# ======================================================
+#   VIEWSETS MULTI-LANGUE
+# ======================================================
+
+from django.utils import translation
+
+class InterventionTypeViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = InterventionType.objects.all().order_by("name_fr")
+    serializer_class = InterventionTypeSerializer
+
+    def list(self, request, *args, **kwargs):
+        lang = request.GET.get("lang") or request.headers.get("Accept-Language") or "fr"
+        translation.activate(lang)
+        # 👇 transmet la langue au serializer
+        serializer = self.get_serializer(self.get_queryset(), many=True, context={"lang": lang})
+        return Response(serializer.data)
+
+
+
+class UrgencyLevelViewSet(viewsets.ReadOnlyModelViewSet):
+    """Retourne les niveaux d’urgence traduits."""
+    queryset = UrgencyLevel.objects.all().order_by("priority")
+    serializer_class = UrgencyLevelSerializer
+    permission_classes = [AllowAny]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+
+    def list(self, request, *args, **kwargs):
+        lang = request.headers.get("Accept-Language") or request.GET.get("lang", "fr")
+        translation.activate(lang)
+        return super().list(request, *args, **kwargs)

@@ -1,42 +1,60 @@
 import axios, { AxiosError } from "axios";
+import i18n from "../i18n"; // ✅ pour accéder à la langue courante
 
-/** Joins base origin with /api exactly once */
+/**
+ * ✅ Génération propre de l'URL de base.
+ * Évite TOUT doublon "api/api" même si VITE_API_URL contient déjà /api.
+ */
 function buildBaseURL() {
-  const raw = import.meta.env.VITE_API_URL?.toString().trim();
-  // 1) Si VITE_API_URL est défini → on s’y fie
-  if (raw) {
-    // si l’URL contient déjà /api à la fin, on ne le rajoute pas.
-    if (/\b\/api\/?$/.test(raw)) return raw.replace(/\/+$/, "");
-    return raw.replace(/\/+$/, "") + "/api";
-  }
-  // 2) Sinon: dev local
-  return "http://127.0.0.1:8000/api";
+  let base = import.meta.env.VITE_API_URL?.trim() || "http://127.0.0.1:8000";
+
+  // Supprime les "/" finaux
+  base = base.replace(/\/+$/, "");
+
+  // Supprime un éventuel "/api" déjà présent à la fin
+  base = base.replace(/\/api$/, "");
+
+  // Ajoute une seule fois /api
+  const finalBase = base + "/api";
+
+  console.log("🌐 Base API finale utilisée :", finalBase);
+  return finalBase;
 }
 
 const http = axios.create({
   baseURL: buildBaseURL(),
-  // JWT → pas besoin de cookies
   withCredentials: false,
-  // évite que des requêtes pendantes bloquent l’UI
   timeout: 20000,
   headers: { "Content-Type": "application/json" },
 });
 
-// 🔹 Intercepteur requête – ajoute le token si présent
+/* ============================================================
+   🟦 Intercepteur de requêtes
+   - Ajoute le JWT si disponible
+   - Ajoute aussi la langue active (Accept-Language)
+   ============================================================ */
 http.interceptors.request.use((config) => {
   const token = localStorage.getItem("access");
+
+  config.headers = config.headers ?? {};
+
   if (token) {
-    config.headers = config.headers ?? {};
     (config.headers as any).Authorization = `Bearer ${token}`;
   }
+
+  // ✅ Langue courante du site (ex: "fr" ou "en")
+  (config.headers as any)["Accept-Language"] = i18n.language || "fr";
+  console.log("🌐 Header Accept-Language envoyé :", (config.headers as any)["Accept-Language"]);
+
   return config;
 });
 
-// 🔹 Intercepteur réponse – normalise les erreurs
+/* ============================================================
+   🟥 Intercepteur de réponses (erreurs)
+   ============================================================ */
 http.interceptors.response.use(
   (res) => res,
   (error: AxiosError<any>) => {
-    // format d’erreur homogène pour tes catch()
     const status = error.response?.status ?? 0;
     const data = error.response?.data;
     const message =

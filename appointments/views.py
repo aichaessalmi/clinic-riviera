@@ -1,66 +1,97 @@
-from rest_framework import viewsets, status
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
-from rest_framework.views import APIView
-from django.utils import timezone
-from django.db.models import Q
-from .models import Appointment
-from .serializers import AppointmentSerializer
-from accounts.permissions import IsDirectionOrSecretaire
+# appointments/views.py
+from rest_framework import viewsets, filters
+from rest_framework.permissions import AllowAny  # ou IsAuthenticatedOrReadOnly
+from django_filters.rest_framework import DjangoFilterBackend
 
-class AppointmentViewSet(viewsets.ModelViewSet):
-    """
-    Back-office: Secrétaire + Direction
-    CRUD sur les RDV (création interne, statut, etc.)
-    """
-    queryset = Appointment.objects.select_related("patient","doctor").order_by("-created_at")
-    serializer_class = AppointmentSerializer
-    permission_classes = [IsDirectionOrSecretaire]
+from .models import Room, AppointmentType, Appointment
+from .serializers import (
+    RoomSerializer,
+    AppointmentTypeSerializer,
+    AppointmentSerializer,
+)
 
-class AppointmentPublicCreateView(APIView):
-    """
-    Endpoint public (WordPress/formulaire site) pour créer une demande de RDV.
-    Pas d'authentification. Statut = pending.
-    """
+
+# ---------------------------
+# 🔹 Salles
+# ---------------------------
+class RoomViewSet(viewsets.ModelViewSet):
+    queryset = Room.objects.all().order_by("id")
+    serializer_class = RoomSerializer
     permission_classes = [AllowAny]
 
-    def post(self, request):
-        data = request.data.copy()
-        data["status"] = "pending"
-        serializer = AppointmentSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        appt = serializer.save()
-        return Response(AppointmentSerializer(appt).data, status=status.HTTP_201_CREATED)
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx["request"] = self.request  # ✅ indispensable pour détecter Accept-Language
+        return ctx
 
-class CalendarEventsView(APIView):
-    """
-    Renvoie les RDV sous forme d'événements (FullCalendar)
-    Accès back-office: Secrétaire + Direction
-    """
-    permission_classes = [IsDirectionOrSecretaire]
+from .models import Patient
+from .serializers import PatientSerializer
+from rest_framework import viewsets
+from rest_framework.permissions import AllowAny
+# ---------------------------
+# 🔹 Types de rendez-vous
+# ---------------------------
+class AppointmentTypeViewSet(viewsets.ModelViewSet):
+    queryset = AppointmentType.objects.all().order_by("id")
+    serializer_class = AppointmentTypeSerializer
+    permission_classes = [AllowAny]
 
-    def get(self, request):
-        date_from = request.query_params.get("from")
-        date_to = request.query_params.get("to")
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx["request"] = self.request  # ✅ pour lire Accept-Language
+        return ctx
 
-        qs = Appointment.objects.select_related("patient")
-        if date_from and date_to:
-            qs = qs.filter(date__gte=date_from, date__lte=date_to)
+class PatientViewSet(viewsets.ModelViewSet):
+    queryset = Patient.objects.all().order_by("last_name")
+    serializer_class = PatientSerializer
+    permission_classes = [AllowAny]
 
-        events = []
-        for a in qs:
-            title = f"{a.patient.last_name} {a.patient.first_name} - {a.specialty} ({a.status})"
-            events.append({
-                "id": a.id,
-                "title": title,
-                "start": a.date,
-                "end": a.date,  # si tu veux une durée, ajoute un champ 'end'
-                "status": a.status,
-                "specialty": a.specialty,
-                "patient": {
-                    "id": a.patient.id,
-                    "first_name": a.patient.first_name,
-                    "last_name": a.patient.last_name,
-                }
-            })
-        return Response(events)
+# ---------------------------
+# 🔹 Rendez-vous
+# ---------------------------
+from django.db.models import Q
+
+class AppointmentViewSet(viewsets.ModelViewSet):
+    serializer_class = AppointmentSerializer
+    permission_classes = [AllowAny]
+
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = {
+        "date": ["gte", "lte", "exact"],
+        "status": ["exact"],
+        "doctor": ["exact"],
+        "room": ["exact"],
+        "type": ["exact"],  # garde-le pour filtrage par ID
+    }
+    ordering_fields = ["date", "time", "id"]
+    ordering = ["-date", "-time", "-id"]
+
+    def get_queryset(self):
+        qs = (
+            Appointment.objects
+            .select_related("room", "type", "doctor")
+            .order_by("-date", "-time", "-id")
+        )
+
+        params = self.request.query_params
+        date_after = params.get("date_after")
+        date_before = params.get("date_before")
+        intervention = params.get("type")  # peut être nom ou ID
+
+        if date_after:
+            qs = qs.filter(date__gte=date_after)
+        if date_before:
+            qs = qs.filter(date__lte=date_before)
+
+        # ✅ Filtrage intelligent par nom du type (FR / EN)
+        if intervention:
+            if intervention.isdigit():
+                qs = qs.filter(type_id=intervention)
+            else:
+                qs = qs.filter(
+                    Q(type__name_fr__icontains=intervention)
+                    | Q(type__name_en__icontains=intervention)
+                )
+
+        return qs
+

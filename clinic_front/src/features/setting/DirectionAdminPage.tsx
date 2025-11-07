@@ -1,36 +1,32 @@
 // src/components/DirectionAdminPage.tsx
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { 
+  getCurrentUser, 
+  updateCurrentUser, 
+  updateCurrentUserPhoto,
+  mediaUrl,
+  http 
+} from "../../api/users";
+import { useTranslation } from "react-i18next";
 
 // ==================== TYPES ET INTERFACES ====================
 interface User {
   id: number;
-  prenom: string;
-  nom: string;
+  username: string;
+  first_name: string;
+  last_name: string;
   email: string;
   telephone?: string;
   role: "DIRECTION" | "MEDECIN" | "SECRETAIRE";
   departement?: string;
   specialite?: string;
   poste?: string;
+  code_personnel?: string;
   is_active: boolean;
-  archived: boolean;
   date_adhesion?: string;
-  photo?: string | null; // Modifié pour accepter null
-}
-
-interface UserProfile {
-  id: number;
-  nom: string;
-  prenom: string;
-  email: string;
-  telephone: string;
-  role: User["role"];
-  specialite: string;
-  departement: string;
-  licenceMedicale: string;
-  dateAdhesion: string;
-  photo: string | null;
+  photo?: string | null;
   langue: "fr" | "en";
+  theme: "light" | "dark" | "auto";
   notifications: {
     email: boolean;
     sms: boolean;
@@ -40,109 +36,37 @@ interface UserProfile {
   };
 }
 
-type ActiveTab = "profil" | "parametres" | "securite" | "role" | "medecins";
+interface UserProfile {
+  username: string;
+  id: number;
+  nom: string;
+  prenom: string;
+  email: string;
+  telephone: string;
+  role: User["role"];
+  departement: string;
+  dateAdhesion: string;
+  photo: string | null;
+  langue: "fr" | "en";
+  theme: "light" | "dark" | "auto";
+  code_personnel: string;
+  notifications: {
+    email: boolean;
+    sms: boolean;
+    whatsapp: boolean;
+    rappels: boolean;
+    nouvelles: boolean;
+  };
+}
+
+type ActiveTab = "profil" | "parametres" | "securite" | "gestion-utilisateurs" | "creer-utilisateur";
 
 // ==================== DONNÉES STATIQUES ====================
-const SPECIALITES = [
-  "Cardiologie", "Dermatologie", "Gastro-entérologie", "Neurologie", 
-  "Pédiatrie", "Radiologie", "Chirurgie", "Médecine Interne", 
-  "Urgences", "Gynécologie", "Ophtalmologie", "Orthopédie",
-  "Psychiatrie", "Radiothérapie", "Urologie", "Endocrinologie"
-];
-
 const DEPARTEMENTS = [
   "Médecine Interne", "Chirurgie", "Pédiatrie", "Urgences", 
   "Radiologie", "Laboratoire", "Administration", "Cardiologie",
   "Maternité", "Soins Intensifs", "Pharmacie", "Bloc Opératoire"
 ];
-
-const INITIAL_USERS: User[] = [
-  { 
-    id: 1, 
-    prenom: "Ahmed", 
-    nom: "Benali", 
-    email: "ahmed.benali@clinique.local", 
-    telephone: "+212612345678", 
-    role: "MEDECIN", 
-    departement: "Médecine Interne", 
-    specialite: "Cardiologie", 
-    is_active: true, 
-    archived: false, 
-    date_adhesion: "2019-03-15",
-    photo: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face"
-  },
-  { 
-    id: 2, 
-    prenom: "Sara", 
-    nom: "El Amrani", 
-    email: "sara.elamrani@clinique.local", 
-    telephone: "+212611223344", 
-    role: "SECRETAIRE", 
-    departement: "Accueil & RDV", 
-    specialite: "", 
-    poste: "Standard: 102", 
-    is_active: true, 
-    archived: false, 
-    date_adhesion: "2020-06-10",
-    photo: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face"
-  },
-  { 
-    id: 3, 
-    prenom: "Youssef", 
-    nom: "Rachidi", 
-    email: "youssef.rachidi@clinique.local", 
-    telephone: "+212698765432", 
-    role: "DIRECTION", 
-    departement: "Direction Générale", 
-    is_active: true, 
-    archived: false, 
-    date_adhesion: "2017-09-01",
-    photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"
-  },
-  { 
-    id: 4, 
-    prenom: "Leila", 
-    nom: "Mansouri", 
-    email: "leila.mansouri@clinique.local", 
-    telephone: "+212600112233", 
-    role: "MEDECIN", 
-    departement: "Pédiatrie", 
-    specialite: "Pédiatrie", 
-    is_active: true, 
-    archived: false, 
-    date_adhesion: "2021-08-20",
-    photo: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&h=150&fit=crop&crop=face"
-  },
-  { 
-    id: 5, 
-    prenom: "Karim", 
-    nom: "Zouhair", 
-    email: "karim.zouhair@clinique.local", 
-    telephone: "+212655443322", 
-    role: "MEDECIN", 
-    departement: "Chirurgie", 
-    specialite: "Chirurgie Générale", 
-    is_active: false, 
-    archived: false, 
-    date_adhesion: "2018-11-05" 
-  },
-];
-
-const CURRENT_USER: UserProfile = {
-  id: 1, 
-  nom: "Benali", 
-  prenom: "Ahmed", 
-  email: "ahmed.benali@cliniqueriviera.ma", 
-  telephone: "+212 6 12 34 56 78", 
-  role: "MEDECIN",
-  specialite: "Cardiologie", 
-  departement: "Médecine Interne", 
-  licenceMedicale: "MD-2019-0456", 
-  dateAdhesion: "2019-03-15", 
-  photo: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face", 
-  langue: "fr",
-  notifications: { email: true, sms: false, whatsapp: true, rappels: true, nouvelles: true }
-};
 
 // ==================== COMPOSANTS ICÔNES ====================
 const IconUser: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
@@ -164,27 +88,9 @@ const IconShield: React.FC<{ className?: string }> = ({ className = "w-5 h-5" })
   </svg>
 );
 
-const IconBadge: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-  </svg>
-);
-
 const IconMedecin: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
     <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-  </svg>
-);
-
-const IconPlus: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14"/>
-  </svg>
-);
-
-const IconEdit: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
   </svg>
 );
 
@@ -194,18 +100,62 @@ const IconTrash: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) 
   </svg>
 );
 
-const IconSearch: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
+const IconSearch: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
     <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
   </svg>
 );
 
-const IconCamera: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
+const IconCamera: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
     <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
     <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
   </svg>
 );
+
+const IconUserAdd: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+    <path strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+  </svg>
+);
+
+// ==================== COMPOSANT TOAST ====================
+interface ToastProps {
+  message: string;
+  type: 'success' | 'error' | 'warning';
+  onClose: () => void;
+}
+
+const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const bgColor = {
+    success: 'bg-green-500',
+    error: 'bg-red-500',
+    warning: 'bg-yellow-500'
+  }[type];
+
+  const icon = {
+    success: '✅',
+    error: '❌',
+    warning: '⚠️'
+  }[type];
+
+  return (
+    <div className={`fixed top-4 right-4 ${bgColor} text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-sm animate-fade-in`}>
+      <div className="flex items-center gap-3">
+        <span className="text-lg">{icon}</span>
+        <span className="flex-1">{message}</span>
+        <button onClick={onClose} className="text-white hover:text-gray-200 text-lg">
+          ×
+        </button>
+      </div>
+    </div>
+  );
+};
 
 // ==================== COMPOSANTS MODULAIRES ====================
 interface TabButtonProps {
@@ -221,13 +171,13 @@ const TabButton: React.FC<TabButtonProps> = ({ active, icon, label, onClick, mob
     return (
       <button
         onClick={onClick}
-        className={`flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-200 flex-1 min-w-0 ${
+        className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 flex-1 min-w-0 ${
           active
             ? "bg-blue-600 text-white shadow-lg"
             : "bg-white text-gray-600 hover:bg-gray-50"
         }`}
       >
-        <div className="text-lg mb-1">{icon}</div>
+        <div className="text-sm mb-1">{icon}</div>
         <span className="text-xs font-medium truncate max-w-full">{label}</span>
       </button>
     );
@@ -236,7 +186,7 @@ const TabButton: React.FC<TabButtonProps> = ({ active, icon, label, onClick, mob
   return (
     <button
       onClick={onClick}
-      className={`flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+      className={`flex items-center space-x-2 px-3 py-2 rounded-lg font-medium transition-all duration-200 text-sm lg:text-base ${
         active
           ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
           : "bg-white text-gray-700 border border-gray-200 hover:border-blue-300 hover:text-blue-600"
@@ -250,41 +200,112 @@ const TabButton: React.FC<TabButtonProps> = ({ active, icon, label, onClick, mob
 
 // ==================== COMPOSANT PRINCIPAL ====================
 const DirectionAdminPage: React.FC = () => {
+  const { t, i18n } = useTranslation();
+  
   // États principaux
   const [activeTab, setActiveTab] = useState<ActiveTab>("profil");
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
+  
   const PAGE_SIZE = 6;
   
   // États pour le profil
-  const [profile, setProfile] = useState<UserProfile>(CURRENT_USER);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // États modales
-  const [showUserModal, setShowUserModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [modalMode, setModalMode] = useState<"add" | "edit">("add");
+  // États pour la création d'utilisateur
+  const [newUserData, setNewUserData] = useState({
+    username: "",
+    first_name: "",
+    last_name: "",
+    email: "",
+    telephone: "",
+    role: "MEDECIN" as User["role"],
+    specialite: "",
+    departement: "",
+    poste: "",
+    code_personnel: "",
+    password: "",
+    is_active: true
+  });
 
-  // Chargement initial
+  // 🔹 Fonction pour afficher les toasts
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
+    setToast({ message, type });
+  };
+
+  // 🔹 Charger le profil et les utilisateurs
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => { 
-      setUsers(INITIAL_USERS); 
-      setLoading(false); 
-    }, 800);
+    loadProfile();
+    loadUsers();
   }, []);
+
+  const loadProfile = async () => {
+    console.log("🔵 [loadProfile] Début du chargement du profil...");
+    try {
+      const me = await getCurrentUser();
+      console.log("🟢 [loadProfile] Données reçues du backend :", me);
+      const userProfile: UserProfile = {
+        username: me.username || "",  
+        id: me.id,
+        prenom: me.first_name || "",
+        nom: me.last_name || "",
+        email: me.email,
+        telephone: me.telephone || "",
+        role: me.role,
+        departement: me.departement || "",
+        dateAdhesion: me.date_adhesion || "",
+        photo: me.photo || null,
+        langue: me.langue || "fr",
+        theme: me.theme || "light",
+        code_personnel: me.code_personnel || "",
+        notifications: me.notifications || {
+          email: true,
+          sms: false,
+          whatsapp: true,
+          rappels: true,
+          nouvelles: true,
+        },
+      };
+      
+      setProfile(userProfile);
+      console.log("🟣 [setProfile] Profil stocké dans le state React :", userProfile);
+
+      if (me.langue && me.langue !== i18n.language) {
+        i18n.changeLanguage(me.langue);
+      }
+      
+    } catch (err) {
+      console.error("❌ Erreur de chargement du profil :", err);
+      showToast("Erreur lors du chargement du profil", "error");
+    }
+  };
+
+  const loadUsers = async () => {
+    setLoading(true);
+    try {
+      const response = await http.get("/users/");
+      setUsers(response.data);
+    } catch (err) {
+      console.error("❌ Erreur de chargement des utilisateurs :", err);
+      showToast("Erreur lors du chargement des utilisateurs", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Mémoisation des données filtrées et paginées
   const { filteredUsers, totalPages, pageUsers } = useMemo(() => {
-    const filtered = users.filter(u => !u.archived && (
-      `${u.prenom} ${u.nom}`.toLowerCase().includes(query.toLowerCase()) ||
+    const filtered = users.filter(u => (
+      `${u.first_name} ${u.last_name}`.toLowerCase().includes(query.toLowerCase()) ||
       u.email.toLowerCase().includes(query.toLowerCase()) ||
-      u.specialite?.toLowerCase().includes(query.toLowerCase()) ||
       u.departement?.toLowerCase().includes(query.toLowerCase())
     ));
     
@@ -294,68 +315,100 @@ const DirectionAdminPage: React.FC = () => {
     return { filteredUsers: filtered, totalPages, pageUsers };
   }, [users, query, page]);
 
-  // Fonctions CRUD
-  const addUser = (payload: Partial<User>) => {
-    const newUser: User = { 
-      id: Date.now(), 
-      prenom: payload.prenom || "Nouveau", 
-      nom: payload.nom || "Utilisateur", 
-      email: payload.email || `user${Date.now()}@clinique.local`, 
-      telephone: payload.telephone || "", 
-      role: payload.role || "MEDECIN", 
-      departement: payload.departement || "", 
-      specialite: payload.specialite || "", 
-      poste: payload.poste || "", 
-      is_active: true, 
-      archived: false, 
-      date_adhesion: new Date().toISOString().split("T")[0],
-      photo: payload.photo || undefined // Changé de null à undefined
-    };
-    setUsers(prev => [newUser, ...prev]);
-    setShowUserModal(false); 
-    setPage(1); 
+  // 🔹 Fonctions CRUD avec API
+  const addUser = async (payload: any) => {
+    try {
+      setIsSaving(true);
+      
+      const cleanPayload = { ...payload };
+      if (!cleanPayload.password) {
+        delete cleanPayload.password;
+      }
+      
+      const response = await http.post("/users/", cleanPayload);
+      setUsers(prev => [response.data, ...prev]);
+      setPage(1);
+      
+      if (activeTab === "creer-utilisateur") {
+        setNewUserData({
+          username: "",
+          first_name: "",
+          last_name: "",
+          email: "",
+          telephone: "",
+          role: "MEDECIN",
+          specialite: "",
+          departement: "",
+          poste: "",
+          code_personnel: "",
+          password: "",
+          is_active: true
+        });
+      }
+      
+      showToast("Utilisateur créé avec succès !", "success");
+      setActiveTab("gestion-utilisateurs");
+    } catch (err: any) {
+      console.error("❌ Erreur création utilisateur :", err);
+      const errorMsg = err.response?.data 
+        ? Object.values(err.response.data).flat().join(', ')
+        : err.message;
+      showToast(`Erreur: ${errorMsg}`, "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const updateUser = (id: number, patch: Partial<User>) => { 
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, ...patch } : u)); 
-    setShowUserModal(false); 
-    setSelectedUser(null); 
+  const deleteUser = async (id: number) => { 
+    try {
+      await http.delete(`/users/${id}/`);
+      setUsers(prev => prev.filter(u => u.id !== id)); 
+      showToast("Utilisateur supprimé avec succès !", "success");
+    } catch (err: any) {
+      console.error("❌ Erreur suppression utilisateur :", err);
+      showToast(`Erreur: ${err.response?.data?.detail || err.message}`, "error");
+    }
   };
 
-  const softDeleteUser = (id: number) => { 
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, archived: true } : u)); 
-  };
+  const handleCreateUser = async () => {
+    if (!newUserData.first_name || !newUserData.last_name || !newUserData.email || !newUserData.username) { 
+      showToast("Prénom, nom, username et email sont obligatoires.", "warning");
+      return; 
+    }
 
-  const toggleActive = (user: User) => {
-    updateUser(user.id, { is_active: !user.is_active });
-  };
-
-  const openAddModal = () => {
-    setModalMode("add");
-    setSelectedUser(null);
-    setShowUserModal(true);
-  };
-
-  const openEditModal = (user: User) => {
-    setModalMode("edit");
-    setSelectedUser(user);
-    setShowUserModal(true);
-  };
-
-  // Fonctions gestion photo de profil
-  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Vérifier la taille du fichier (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert("La taille maximale est de 5MB");
+    if (newUserData.role === "MEDECIN" && !newUserData.code_personnel) {
+      showToast("Le code personnel est obligatoire pour les médecins.", "warning");
       return;
     }
 
-    // Vérifier le type de fichier
-    if (!file.type.startsWith('image/')) {
-      alert("Veuillez sélectionner une image valide");
+    if (newUserData.role !== "MEDECIN" && !newUserData.password) {
+      showToast("Le mot de passe est obligatoire pour les secrétaires et la direction.", "warning");
+      return;
+    }
+
+    const payload = { ...newUserData };
+    
+    if (payload.role !== "MEDECIN") {
+      payload.code_personnel = "";
+    }
+    if (payload.role !== "SECRETAIRE") {
+      payload.poste = "";
+    }
+    
+    await addUser(payload);
+  };
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !profile) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("La taille maximale est de 5MB", "warning");
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      showToast("Veuillez sélectionner une image valide", "warning");
       return;
     }
 
@@ -363,16 +416,44 @@ const DirectionAdminPage: React.FC = () => {
     reader.onload = (e) => {
       const result = e.target?.result as string;
       setPhotoPreview(result);
-      setProfile(prev => ({ ...prev, photo: result }));
     };
     reader.readAsDataURL(file);
+
+    try {
+      setIsSaving(true);
+      await updateCurrentUserPhoto(file);
+
+      const updatedUser = await getCurrentUser();
+      setProfile((prev) => (prev ? { ...prev, photo: updatedUser.photo } : null));
+
+      showToast("Photo de profil mise à jour !", "success");
+    } catch (err) {
+      console.error("❌ Erreur upload photo :", err);
+      showToast("Erreur lors du téléchargement de la photo", "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleRemovePhoto = () => {
-    setPhotoPreview(null);
-    setProfile(prev => ({ ...prev, photo: null }));
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  const handleRemovePhoto = async () => {
+    if (!profile) return;
+
+    try {
+      setIsSaving(true);
+      const formData = new FormData();
+      formData.append("photo", "");
+
+      await updateCurrentUser(formData);
+
+      setPhotoPreview(null);
+      setProfile((prev) => (prev ? { ...prev, photo: null } : null));
+
+      showToast("Photo supprimée !", "success");
+    } catch (err) {
+      console.error("❌ Erreur suppression photo :", err);
+      showToast("Erreur lors de la suppression de la photo", "error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -380,16 +461,28 @@ const DirectionAdminPage: React.FC = () => {
     fileInputRef.current?.click();
   };
 
-  // Fonctions profil
+  // 🔹 Fonctions profil
   const handleSaveProfile = async () => { 
+    if (!profile) return;
+    
     setIsSaving(true); 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1200)); 
+      const payload = {
+        username: profile.username,
+        first_name: profile.prenom,
+        last_name: profile.nom,
+        email: profile.email,
+        telephone: profile.telephone,
+        departement: profile.departement,
+        notifications: profile.notifications,
+      };
+
+      await updateCurrentUser(payload);
       setIsEditing(false); 
-      // Ici, normalement on enverrait les données au serveur
-      console.log("Profil sauvegardé:", profile);
-    } catch (error) {
-      console.error("Erreur sauvegarde profil:", error);
+      showToast("Profil mis à jour avec succès !", "success");
+    } catch (err) {
+      console.error("❌ Erreur sauvegarde profil:", err);
+      showToast("Erreur lors de la sauvegarde du profil", "error");
     } finally {
       setIsSaving(false); 
     }
@@ -397,93 +490,142 @@ const DirectionAdminPage: React.FC = () => {
 
   // Définition des onglets
   const tabs = [
-    { id: "profil" as ActiveTab, icon: <IconUser />, label: "Profil" },
-    { id: "parametres" as ActiveTab, icon: <IconSettings />, label: "Paramètres" },
-    { id: "securite" as ActiveTab, icon: <IconShield />, label: "Sécurité" },
-    { id: "role" as ActiveTab, icon: <IconBadge />, label: "Rôle" },
-    { id: "medecins" as ActiveTab, icon: <IconMedecin />, label: "Médecins" },
+    { id: "profil" as ActiveTab, icon: <IconUser />, label: t('settings.profile') },
+    { id: "parametres" as ActiveTab, icon: <IconSettings />, label: t('settings.preferences') },
+    { id: "securite" as ActiveTab, icon: <IconShield />, label: t('settings.security') },
+    { id: "gestion-utilisateurs" as ActiveTab, icon: <IconMedecin />, label: t('direction.users') },
+    { id: "creer-utilisateur" as ActiveTab, icon: <IconUserAdd />, label: t('direction.createUser') },
   ];
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
 
   // Rendu du contenu selon l'onglet actif
   const renderTabContent = () => {
     switch (activeTab) {
       case "profil":
-        return <ProfilTabContent 
-          profile={profile} 
-          setProfile={setProfile}
-          isEditing={isEditing}
-          setIsEditing={setIsEditing}
-          isSaving={isSaving}
-          onSave={handleSaveProfile}
-          photoPreview={photoPreview}
-          onPhotoUpload={handlePhotoUpload}
-          onRemovePhoto={handleRemovePhoto}
-          onTriggerFileInput={triggerFileInput}
-          fileInputRef={fileInputRef}
-        />;
-      
+        return (
+          <ProfilTabContent
+            profile={profile!}
+            setProfile={setProfile as React.Dispatch<React.SetStateAction<UserProfile>>}
+            isEditing={isEditing}
+            setIsEditing={setIsEditing}
+            isSaving={isSaving}
+            onSave={handleSaveProfile}
+            photoPreview={photoPreview}
+            onPhotoUpload={handlePhotoUpload}
+            onRemovePhoto={handleRemovePhoto}
+            onTriggerFileInput={triggerFileInput}
+            fileInputRef={fileInputRef}
+          />
+        );
+
       case "parametres":
-        return <ParametresTabContent profile={profile} setProfile={setProfile} />;
-      
+        return (
+          <ParametresTabContent
+            profile={profile}
+            setProfile={setProfile as React.Dispatch<React.SetStateAction<UserProfile>>}
+          />
+        );
+
       case "securite":
-        return <SecuriteTabContent />;
-      
-      case "role":
-        return <RoleTabContent profile={profile} />;
-      
-      case "medecins":
-        return <MedecinsTabContent 
-          loading={loading}
-          query={query}
-          setQuery={setQuery}
-          page={page}
-          setPage={setPage}
-          totalPages={totalPages}
-          filteredUsers={filteredUsers}
-          pageUsers={pageUsers}
-          onAddUser={openAddModal}
-          onEditUser={openEditModal}
-          onToggleActive={toggleActive}
-          onDeleteUser={softDeleteUser}
-        />;
-      
+        return <SecuriteTabContent showToast={showToast} />;
+
+      case "gestion-utilisateurs":
+        return (
+          <GestionUtilisateursTabContent
+            loading={loading}
+            query={query}
+            setQuery={setQuery}
+            page={page}
+            setPage={setPage}
+            totalPages={totalPages}
+            filteredUsers={filteredUsers}
+            pageUsers={pageUsers}
+            onDeleteUser={deleteUser}
+          />
+        );
+
+      case "creer-utilisateur":
+        return (
+          <CreerUtilisateurTabContent
+            newUserData={newUserData}
+            setNewUserData={setNewUserData}
+            isSaving={isSaving}
+            onCreateUser={handleCreateUser}
+          />
+        );
+
       default:
         return null;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       {/* Header */}
-      <header className="bg-white/95 backdrop-blur-lg border-b border-gray-200/80 shadow-sm py-4 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="bg-white/95 backdrop-blur-lg border-b border-gray-200/80 shadow-sm py-3 lg:py-4 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3 lg:space-x-4">
               <div className="relative">
-                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center text-xl font-bold shadow-lg overflow-hidden">
-                  {profile.photo ? (
-                    <img 
-                      src={profile.photo} 
-                      alt="Profile" 
+                <div className="h-10 w-10 lg:h-12 lg:w-12 rounded-xl lg:rounded-2xl bg-gradient-to-br from-gray-200 to-gray-300 text-gray-600 flex items-center justify-center text-lg lg:text-xl font-bold shadow-lg overflow-hidden">
+                  {photoPreview ? (
+                    <img
+                      src={photoPreview}
+                      alt="Profile"
                       className="h-full w-full object-cover"
                     />
+                  ) : profile && profile.photo ? (
+                    <img
+                      src={mediaUrl(profile.photo) || ""}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = "none";
+                      }}
+                    />
                   ) : (
-                    `${profile.prenom[0]}${profile.nom[0]}`
+                    <span>
+                      {profile
+                        ? `${profile.prenom?.[0] ?? ""}${profile.nom?.[0] ?? ""}`.toUpperCase()
+                        : "?"}
+                    </span>
                   )}
                 </div>
-                <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-green-400 border-2 border-white"></div>
+
+                <div className="absolute -bottom-1 -right-1 h-3 w-3 lg:h-4 lg:w-4 rounded-full bg-green-400 border-2 border-white"></div>
               </div>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-blue-800 bg-clip-text text-transparent">
-                  Espace Direction
+              <div className="max-w-[140px] lg:max-w-none">
+                <h1 className="text-lg lg:text-2xl font-bold bg-gradient-to-r from-gray-900 to-blue-800 bg-clip-text text-transparent truncate">
+                  {t('direction.title')}
                 </h1>
-                <p className="text-sm text-gray-600">
-                  Clinique Riviera - Gestion administrative
+                <p className="text-xs lg:text-sm text-gray-600 hidden sm:block">
+                  {t('direction.subtitle')}
                 </p>
               </div>
             </div>
             
-            <div className="hidden lg:flex items-center gap-3">
+            {/* Navigation desktop */}
+            <div className="hidden lg:flex items-center gap-2">
               {tabs.map(tab => (
                 <TabButton
                   key={tab.id}
@@ -494,14 +636,60 @@ const DirectionAdminPage: React.FC = () => {
                 />
               ))}
             </div>
+
+            {/* Bouton menu mobile */}
+            <div className="lg:hidden">
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors duration-200"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Navigation Mobile */}
+      {/* Menu mobile déroulant */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden bg-white border-b border-gray-200 shadow-lg">
+          <div className="px-3 py-2 space-y-1">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`flex items-center space-x-3 w-full px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+                  activeTab === tab.id
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                {tab.icon}
+                <span className="text-sm">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Contenu Principal */}
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 lg:py-6 pb-20 lg:pb-6">
+        <div className="bg-white rounded-xl lg:rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+          {renderTabContent()}
+        </div>
+
+       
+      </main>
+
+      {/* Navigation mobile fixe */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 p-2 shadow-2xl">
         <div className="flex justify-around">
-          {tabs.map(tab => (
+          {tabs.slice(0, 3).map(tab => (
             <TabButton
               key={tab.id}
               active={activeTab === tab.id}
@@ -511,76 +699,26 @@ const DirectionAdminPage: React.FC = () => {
               mobile={true}
             />
           ))}
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 flex-1 min-w-0 ${
+              tabs.slice(3).some(tab => activeTab === tab.id)
+                ? "bg-blue-600 text-white"
+                : "bg-white text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            <div className="text-sm mb-1">⋯</div>
+            <span className="text-xs font-medium">Plus</span>
+          </button>
         </div>
       </nav>
-
-      {/* Contenu Principal */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-6">
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-          {renderTabContent()}
-        </div>
-
-        {/* Footer avec statistiques globales */}
-        <footer className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-            <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
-              <div className="text-2xl font-bold text-blue-600">{users.filter(u => u.is_active).length}</div>
-              <div className="text-sm text-blue-800 font-medium">Utilisateurs Actifs</div>
-            </div>
-            <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
-              <div className="text-2xl font-bold text-green-600">{users.filter(u => u.role === "MEDECIN" && u.is_active).length}</div>
-              <div className="text-sm text-green-800 font-medium">Médecins</div>
-            </div>
-            <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200">
-              <div className="text-2xl font-bold text-purple-600">{users.filter(u => u.role === "SECRETAIRE" && u.is_active).length}</div>
-              <div className="text-sm text-purple-800 font-medium">Secrétaires</div>
-            </div>
-            <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border border-orange-200">
-              <div className="text-2xl font-bold text-orange-600">{users.filter(u => !u.is_active).length}</div>
-              <div className="text-sm text-orange-800 font-medium">Comptes Inactifs</div>
-            </div>
-          </div>
-          
-          {/* Section recherche avancée */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-gray-900">🔍 Recherche Avancée</h3>
-                <p className="text-sm text-gray-600">Trouvez rapidement des utilisateurs spécifiques</p>
-              </div>
-              <div className="relative w-80">
-               
-                <input 
-                  placeholder="Rechercher par nom, email, spécialité..." 
-                  value={query} 
-                  onChange={(e) => { setQuery(e.target.value); setPage(1); }} 
-                  className="pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 w-full"
-                />
-              </div>
-            </div>
-          </div>
-        </footer>
-      </main>
-
-      {/* Modal Utilisateur */}
-      {showUserModal && (
-        <UserModal 
-          mode={modalMode}
-          user={selectedUser}
-          onClose={() => {
-            setShowUserModal(false);
-            setSelectedUser(null);
-          }}
-          onSubmit={modalMode === "add" ? addUser : (payload) => selectedUser && updateUser(selectedUser.id, payload)}
-        />
-      )}
     </div>
   );
 };
 
 // ==================== COMPOSANTS DE CONTENU DES ONGLETS ====================
 
-// Onglet Profil
+// Onglet Profil (inchangé)
 interface ProfilTabContentProps {
   profile: UserProfile;
   setProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
@@ -599,39 +737,51 @@ const ProfilTabContent: React.FC<ProfilTabContentProps> = ({
   profile, setProfile, isEditing, setIsEditing, isSaving, onSave,
   photoPreview, onPhotoUpload, onRemovePhoto, onTriggerFileInput, fileInputRef
 }) => {
+  const { t } = useTranslation();
   const currentPhoto = photoPreview || profile.photo;
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 lg:p-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">👤 Profil Utilisateur</h2>
-          <p className="text-gray-600">Gérez vos informations personnelles et professionnelles</p>
+          <h2 className="text-xl lg:text-2xl font-bold text-gray-900">👤 {t('settings.personalInfo')}</h2>
+          <p className="text-gray-600 text-sm lg:text-base">{t('settings.personalInfoDesc')}</p>
         </div>
         <button
           onClick={() => setIsEditing(!isEditing)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 w-full lg:w-auto"
         >
-          {isEditing ? "Annuler" : "Modifier"}
+          {isEditing ? t('common.cancel') : t('settings.editProfile')}
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         {/* Photo de profil */}
         <div className="lg:col-span-1">
-          <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl border border-blue-200 text-center">
-            <h3 className="font-semibold text-blue-900 mb-4">Photo de Profil</h3>
+          <div className="p-4 lg:p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl lg:rounded-2xl border border-blue-200 text-center">
+            <h3 className="font-semibold text-blue-900 mb-4">{t('settings.profilePhoto')}</h3>
             
             <div className="relative inline-block mb-4">
-              <div className="h-32 w-32 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center text-4xl font-bold shadow-lg mx-auto overflow-hidden">
+              <div className="h-24 w-24 lg:h-32 lg:w-32 rounded-xl lg:rounded-2xl 
+                  bg-gradient-to-br from-gray-200 to-gray-300 text-gray-600 
+                  flex items-center justify-center text-2xl lg:text-4xl font-bold 
+                  shadow-lg mx-auto overflow-hidden">
                 {currentPhoto ? (
-                  <img 
-                    src={currentPhoto} 
-                    alt="Profile" 
+                  <img
+                    src={mediaUrl(currentPhoto) || currentPhoto}
+                    alt="Profile"
                     className="h-full w-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = "none";
+                    }}
                   />
                 ) : (
-                  `${profile.prenom[0]}${profile.nom[0]}`
+                  <span className="text-gray-600 select-none">
+                    {profile?.prenom && profile?.nom
+                      ? `${profile.prenom[0].toUpperCase()}${profile.nom[0].toUpperCase()}`
+                      : "?"}
+                  </span>
                 )}
               </div>
               
@@ -640,18 +790,18 @@ const ProfilTabContent: React.FC<ProfilTabContentProps> = ({
                   <button
                     onClick={onTriggerFileInput}
                     className="p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors duration-200"
-                    title="Changer la photo"
+                    title={t('settings.uploadPhoto')}
                   >
-                    <IconCamera className="w-4 h-4" />
+                    <IconCamera className="w-3 h-3 lg:w-4 lg:h-4" />
                   </button>
                   
                   {currentPhoto && (
                     <button
                       onClick={onRemovePhoto}
                       className="p-2 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-colors duration-200"
-                      title="Supprimer la photo"
+                      title={t('settings.removePhoto')}
                     >
-                      <IconTrash className="w-4 h-4" />
+                      <IconTrash className="w-3 h-3 lg:w-4 lg:h-4" />
                     </button>
                   )}
                 </div>
@@ -668,15 +818,15 @@ const ProfilTabContent: React.FC<ProfilTabContentProps> = ({
 
             {isEditing && (
               <p className="text-xs text-gray-600 mt-2">
-                PNG, JPG, JPEG max 5MB
+                {t('settings.photoRequirements')}
               </p>
             )}
           </div>
 
           {/* Informations de connexion */}
-          <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-            <h4 className="font-semibold text-gray-900 mb-2">Dernière connexion</h4>
-            <p className="text-sm text-gray-600">
+          <div className="mt-4 p-3 lg:p-4 bg-gray-50 rounded-xl border border-gray-200">
+            <h4 className="font-semibold text-gray-900 mb-2 text-sm lg:text-base">{t('direction.lastLogin')}</h4>
+            <p className="text-xs lg:text-sm text-gray-600">
               {new Date().toLocaleDateString("fr-FR", { 
                 weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
                 hour: '2-digit', minute: '2-digit'
@@ -685,16 +835,16 @@ const ProfilTabContent: React.FC<ProfilTabContentProps> = ({
           </div>
         </div>
 
-        {/* Informations personnelles et professionnelles */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-2xl border border-green-200">
-            <h3 className="font-semibold text-green-900 mb-4">Informations Personnelles</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Informations personnelles */}
+        <div className="lg:col-span-2 space-y-4 lg:space-y-6">
+          <div className="p-4 lg:p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-xl lg:rounded-2xl border border-green-200">
+            <h3 className="font-semibold text-green-900 mb-4">{t('settings.personalInfo')}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4">
               {[
-                { label: "Prénom", field: "prenom", value: profile.prenom, type: "text" },
-                { label: "Nom", field: "nom", value: profile.nom, type: "text" },
-                { label: "Email", field: "email", value: profile.email, type: "email" },
-                { label: "Téléphone", field: "telephone", value: profile.telephone, type: "text" },
+                { label: t('common.firstName'), field: "prenom", value: profile.prenom, type: "text" },
+                { label: t('common.lastName'), field: "nom", value: profile.nom, type: "text" },
+                { label: t('common.email'), field: "email", value: profile.email, type: "email" },
+                { label: t('common.phone'), field: "telephone", value: profile.telephone, type: "text" },
               ].map(({ label, field, value, type }) => (
                 <div key={field}>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">{label}</label>
@@ -703,51 +853,10 @@ const ProfilTabContent: React.FC<ProfilTabContentProps> = ({
                       type={type}
                       value={value}
                       onChange={(e) => setProfile(prev => ({ ...prev, [field]: e.target.value }))}
-                      className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                      className="w-full rounded-lg border border-gray-300 px-3 lg:px-4 py-2 lg:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm lg:text-base"
                     />
                   ) : (
-                    <div className="text-gray-900 text-lg font-medium">{value}</div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl border border-purple-200">
-            <h3 className="font-semibold text-purple-900 mb-4">Informations Professionnelles</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                { label: "Spécialité", field: "specialite", value: profile.specialite, type: "select", options: SPECIALITES },
-                { label: "Département", field: "departement", value: profile.departement, type: "select", options: DEPARTEMENTS },
-                { label: "Licence Médicale", field: "licenceMedicale", value: profile.licenceMedicale, type: "text" },
-                { label: "Date d'Adhésion", field: "dateAdhesion", value: profile.dateAdhesion, type: "date" },
-              ].map(({ label, field, value, type, options }) => (
-                <div key={field}>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">{label}</label>
-                  {isEditing && type === "select" ? (
-                    <select
-                      value={value}
-                      onChange={(e) => setProfile(prev => ({ ...prev, [field]: e.target.value }))}
-                      className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
-                    >
-                      {options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                  ) : isEditing ? (
-                    <input
-                      type={type}
-                      value={value}
-                      onChange={(e) => setProfile(prev => ({ ...prev, [field]: e.target.value }))}
-                      className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
-                    />
-                  ) : (
-                    <div className="text-gray-900 text-lg font-medium">
-                      {type === "date" ? 
-                        new Date(value).toLocaleDateString("fr-FR", { 
-                          year: 'numeric', month: 'long', day: 'numeric' 
-                        }) : 
-                        value
-                      }
-                    </div>
+                    <div className="text-gray-900 text-base lg:text-lg font-medium">{value || "-"}</div>
                   )}
                 </div>
               ))}
@@ -755,25 +864,25 @@ const ProfilTabContent: React.FC<ProfilTabContentProps> = ({
           </div>
 
           {isEditing && (
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
               <button
                 onClick={() => setIsEditing(false)}
-                className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors duration-200"
+                className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors duration-200 order-2 sm:order-1"
               >
-                Annuler
+                {t('common.cancel')}
               </button>
               <button
                 onClick={onSave}
                 disabled={isSaving}
-                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors duration-200 flex items-center gap-2"
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors duration-200 flex items-center justify-center gap-2 order-1 sm:order-2"
               >
                 {isSaving ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Sauvegarde...
+                    {t('common.saving')}
                   </>
                 ) : (
-                  "Sauvegarder"
+                  t('settings.saveChanges')
                 )}
               </button>
             </div>
@@ -790,77 +899,60 @@ interface ParametresTabContentProps {
   setProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
 }
 
-const ParametresTabContent: React.FC<ParametresTabContentProps> = ({ profile, setProfile }) => (
-  <div className="p-6">
-    <div className="mb-6">
-      <h2 className="text-2xl font-bold text-gray-900">⚙️ Paramètres et Préférences</h2>
-      <p className="text-gray-600">Personnalisez votre expérience utilisateur</p>
-    </div>
+const ParametresTabContent: React.FC<ParametresTabContentProps> = ({ profile, setProfile }) => {
+  const { t } = useTranslation();
 
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl border border-purple-200">
-        <h3 className="font-semibold text-purple-900 mb-4">Préférences Générales</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Langue</label>
-            <select
-              value={profile.langue}
-              onChange={(e) => setProfile(prev => ({ ...prev, langue: e.target.value as "fr" | "en" }))}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
-            >
-              <option value="fr">Français</option>
-              <option value="en">English</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Thème d'interface</label>
-            <select className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200">
-              <option value="light">Clair</option>
-              <option value="dark">Sombre</option>
-              <option value="auto">Automatique</option>
-            </select>
-          </div>
-        </div>
+  return (
+    <div className="p-4 lg:p-6">
+      <div className="mb-6">
+        <h2 className="text-xl lg:text-2xl font-bold text-gray-900">⚙️ {t('settings.preferences')}</h2>
+        <p className="text-gray-600 text-sm lg:text-base">{t('direction.preferencesDescription')}</p>
       </div>
 
-      <div className="p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl border border-orange-200">
-        <h3 className="font-semibold text-orange-900 mb-4">Notifications</h3>
-        <div className="space-y-3">
-          {Object.entries(profile.notifications).map(([key, value]) => (
-            <div key={key} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
-              <div>
-                <div className="font-medium capitalize">
-                  {key === 'email' && 'Email'}
-                  {key === 'sms' && 'SMS'}
-                  {key === 'whatsapp' && 'WhatsApp'}
-                  {key === 'rappels' && 'Rappels automatiques'}
-                  {key === 'nouvelles' && 'Nouvelles de la clinique'}
+      <div className="grid grid-cols-1 gap-6">
+        <div className="p-4 lg:p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl lg:rounded-2xl border border-orange-200">
+          <h3 className="font-semibold text-orange-900 mb-4">{t('settings.notificationPreferences')}</h3>
+          <div className="space-y-3">
+            {Object.entries(profile.notifications).map(([key, value]) => (
+              <div key={key} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+                <div>
+                  <div className="font-medium text-sm lg:text-base capitalize">
+                    {key === 'email' && t('settings.emailNotifications')}
+                    {key === 'sms' && t('settings.smsNotifications')}
+                    {key === 'whatsapp' && t('settings.whatsappNotifications')}
+                    {key === 'rappels' && t('settings.automaticReminders')}
+                    {key === 'nouvelles' && t('settings.clinicNews')}
+                  </div>
                 </div>
+                <button
+                  onClick={() => setProfile(prev => ({ 
+                    ...prev, 
+                    notifications: { ...prev.notifications, [key]: !value } 
+                  }))}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
+                    value ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                    value ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
+                </button>
               </div>
-              <button
-                onClick={() => setProfile(prev => ({ 
-                  ...prev, 
-                  notifications: { ...prev.notifications, [key]: !value } 
-                }))}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
-                  value ? 'bg-blue-600' : 'bg-gray-300'
-                }`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
-                  value ? 'translate-x-6' : 'translate-x-1'
-                }`} />
-              </button>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ==================== ONGLET SÉCURITÉ ====================
-const SecuriteTabContent: React.FC = () => {
+interface SecuriteTabContentProps {
+  showToast: (message: string, type?: 'success' | 'error' | 'warning') => void;
+}
+
+const SecuriteTabContent: React.FC<SecuriteTabContentProps> = ({ showToast }) => {
+  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -869,83 +961,94 @@ const SecuriteTabContent: React.FC = () => {
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
-      alert("Les mots de passe ne correspondent pas");
+      showToast(t('settings.passwordMismatch'), "warning");
       return;
     }
     if (newPassword.length < 8) {
-      alert("Le mot de passe doit contenir au moins 8 caractères");
+      showToast(t('settings.passwordLengthError'), "warning");
       return;
     }
     
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setIsSaving(false);
+    try {
+      await updateCurrentUser({
+        old_password: currentPassword,
+        new_password: newPassword,
+      });
+      
+      showToast(t('settings.passwordUpdateSuccess'), "success");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      console.error("❌ Erreur de modification :", err);
+      showToast(t('settings.passwordUpdateError'), "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 lg:p-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">🔒 Sécurité du Compte</h2>
-        <p className="text-gray-600">Protégez votre compte avec des paramètres de sécurité avancés</p>
+        <h2 className="text-xl lg:text-2xl font-bold text-gray-900">🔒 {t('settings.security')}</h2>
+        <p className="text-gray-600 text-sm lg:text-base">{t('direction.securityDescription')}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="p-6 bg-gradient-to-br from-red-50 to-red-100 rounded-2xl border border-red-200">
-          <h3 className="font-semibold text-red-900 mb-4">Changer le Mot de Passe</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        <div className="p-4 lg:p-6 bg-gradient-to-br from-red-50 to-red-100 rounded-xl lg:rounded-2xl border border-red-200">
+          <h3 className="font-semibold text-red-900 mb-4">{t('settings.changePassword')}</h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Mot de passe actuel</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">{t('settings.currentPassword')}</label>
               <input
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
-                placeholder="Entrez votre mot de passe actuel"
+                className="w-full rounded-lg border border-gray-300 px-3 lg:px-4 py-2 lg:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm lg:text-base"
+                placeholder={t('settings.currentPassword')}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Nouveau mot de passe</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">{t('settings.newPassword')}</label>
               <input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
-                placeholder="Au moins 8 caractères"
+                className="w-full rounded-lg border border-gray-300 px-3 lg:px-4 py-2 lg:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm lg:text-base"
+                placeholder={t('settings.newPassword')}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Confirmer le mot de passe</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">{t('settings.confirmPassword')}</label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
-                placeholder="Répétez le nouveau mot de passe"
+                className="w-full rounded-lg border border-gray-300 px-3 lg:px-4 py-2 lg:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm lg:text-base"
+                placeholder={t('settings.confirmPassword')}
               />
             </div>
 
             <button
               onClick={handleChangePassword}
               disabled={isSaving || !currentPassword || !newPassword || !confirmPassword}
-              className="w-full px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors duration-200"
+              className="w-full px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors duration-200 text-sm lg:text-base"
             >
-              {isSaving ? "Modification..." : "Modifier le mot de passe"}
+              {isSaving ? t('common.updating') : t('settings.updatePassword')}
             </button>
           </div>
         </div>
 
-        <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl border border-blue-200">
-          <h3 className="font-semibold text-blue-900 mb-4">Sécurité Avancée</h3>
+        <div className="p-4 lg:p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl lg:rounded-2xl border border-blue-200">
+          <h3 className="font-semibold text-blue-900 mb-4">{t('settings.twoFactorAuth')}</h3>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between p-3 lg:p-4 bg-white rounded-lg border border-gray-200">
               <div>
-                <div className="font-semibold text-gray-900">Authentification à deux facteurs</div>
-                <div className="text-sm text-gray-600">Ajoutez une sécurité supplémentaire à votre compte</div>
+                <div className="font-semibold text-gray-900 text-sm lg:text-base">{t('settings.twoStepVerification')}</div>
+                <div className="text-xs lg:text-sm text-gray-600">{t('settings.twoStepDesc')}</div>
               </div>
               <button
                 onClick={() => setTwoFactorEnabled(!twoFactorEnabled)}
@@ -959,13 +1062,13 @@ const SecuriteTabContent: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+            <div className="p-3 lg:p-4 bg-yellow-50 rounded-lg border border-yellow-200">
               <div className="flex items-start space-x-3">
                 <div className="text-yellow-600 text-lg">⚠️</div>
                 <div>
-                  <div className="font-semibold text-yellow-800">Sécurité recommandée</div>
-                  <div className="text-sm text-yellow-700">
-                    Activez l'authentification à deux facteurs pour une protection optimale de votre compte.
+                  <div className="font-semibold text-yellow-800 text-sm lg:text-base">{t('direction.securityRecommended')}</div>
+                  <div className="text-xs lg:text-sm text-yellow-700">
+                    {t('direction.twoFactorRecommendation')}
                   </div>
                 </div>
               </div>
@@ -977,96 +1080,8 @@ const SecuriteTabContent: React.FC = () => {
   );
 };
 
-// ==================== ONGLET RÔLE ====================
-interface RoleTabContentProps {
-  profile: UserProfile;
-}
-
-const RoleTabContent: React.FC<RoleTabContentProps> = ({ profile }) => (
-  <div className="p-6">
-    <div className="mb-6">
-      <h2 className="text-2xl font-bold text-gray-900">🛡 Rôle et Permissions</h2>
-      <p className="text-gray-600">Gestion des droits d'accès et des privilèges</p>
-    </div>
-
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="space-y-6">
-        <div className="p-6 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl border border-indigo-200">
-          <h3 className="font-semibold text-indigo-900 mb-4">Informations du Rôle</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200">
-              <span className="font-medium">Rôle actuel</span>
-              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium capitalize">
-                {profile.role.toLowerCase()}
-              </span>
-            </div>
-
-            <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200">
-              <span className="font-medium">Département</span>
-              <span className="text-gray-900 font-medium">{profile.departement}</span>
-            </div>
-
-            <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200">
-              <span className="font-medium">Spécialité</span>
-              <span className="text-gray-900 font-medium">{profile.specialite}</span>
-            </div>
-
-            <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200">
-              <span className="font-medium">Date d'adhésion</span>
-              <span className="text-gray-900 font-medium">
-                {new Date(profile.dateAdhesion).toLocaleDateString("fr-FR")}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-2xl border border-green-200">
-        <h3 className="font-semibold text-green-900 mb-4">Permissions Accordées</h3>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
-            <div>
-              <div className="font-medium">Gestion des rendez-vous</div>
-              <div className="text-sm text-gray-500">Visualiser et modifier les rendez-vous patients</div>
-            </div>
-            <div className="text-green-600 font-medium">✅ Autorisé</div>
-          </div>
-
-          <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
-            <div>
-              <div className="font-medium">Accès aux statistiques</div>
-              <div className="text-sm text-gray-500">Consulter les données de performance</div>
-            </div>
-            <div className={profile.role === "DIRECTION" ? "text-green-600 font-medium" : "text-gray-400 font-medium"}>
-              {profile.role === "DIRECTION" ? "✅ Autorisé" : "❌ Restreint"}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
-            <div>
-              <div className="font-medium">Gestion des utilisateurs</div>
-              <div className="text-sm text-gray-500">Ajouter/modifier/supprimer des utilisateurs</div>
-            </div>
-            <div className={profile.role === "DIRECTION" ? "text-green-600 font-medium" : "text-gray-400 font-medium"}>
-              {profile.role === "DIRECTION" ? "✅ Autorisé" : "❌ Restreint"}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
-            <div>
-              <div className="font-medium">Export de données</div>
-              <div className="text-sm text-gray-500">Télécharger les rapports et données</div>
-            </div>
-            <div className="text-green-600 font-medium">✅ Autorisé</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-// ==================== ONGLET MÉDECINS ====================
-interface MedecinsTabContentProps {
+// ==================== ONGLET GESTION UTILISATEURS ====================
+interface GestionUtilisateursTabContentProps {
   loading: boolean;
   query: string;
   setQuery: (query: string) => void;
@@ -1075,13 +1090,10 @@ interface MedecinsTabContentProps {
   totalPages: number;
   filteredUsers: User[];
   pageUsers: User[];
-  onAddUser: () => void;
-  onEditUser: (user: User) => void;
-  onToggleActive: (user: User) => void;
   onDeleteUser: (id: number) => void;
 }
 
-const MedecinsTabContent: React.FC<MedecinsTabContentProps> = ({
+const GestionUtilisateursTabContent: React.FC<GestionUtilisateursTabContentProps> = ({
   loading,
   query,
   setQuery,
@@ -1090,65 +1102,35 @@ const MedecinsTabContent: React.FC<MedecinsTabContentProps> = ({
   totalPages,
   filteredUsers,
   pageUsers,
-  onAddUser,
-  onEditUser,
-  onToggleActive,
   onDeleteUser,
 }) => {
+  const { t } = useTranslation();
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; user?: User }>({ open: false });
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6">
+    <div className="p-4 lg:p-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">🏥 Gestion des Médecins</h2>
-          <p className="text-gray-600">Administration du personnel médical et paramédical</p>
+          <h2 className="text-xl lg:text-2xl font-bold text-gray-900">🏥 {t('direction.userManagement')}</h2>
+          <p className="text-gray-600 text-sm lg:text-base">{t('direction.userManagementDescription')}</p>
         </div>
         
-        <div className="flex items-center gap-3 mt-4 lg:mt-0">
-          <div className="relative">
-            <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+          <div className="relative flex-1">
+            <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input 
-              placeholder="Rechercher..." 
+              placeholder={t('direction.searchUsers')} 
               value={query} 
               onChange={(e) => { setQuery(e.target.value); setPage(1); }} 
-              className="pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 w-64"
+              className="pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 w-full text-sm lg:text-base"
             />
           </div>
-          
-          <button 
-            onClick={onAddUser}
-            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg shadow-blue-200 hover:shadow-xl hover:shadow-blue-300 transition-all duration-200"
-          >
-            <IconPlus />
-            <span>Ajouter</span>
-          </button>
         </div>
       </div>
 
-      {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl border border-blue-200">
-          <div className="text-sm text-blue-600 font-medium">Médecins actifs</div>
-          <div className="text-2xl font-bold text-blue-900">
-            {filteredUsers.filter(u => u.role === "MEDECIN" && u.is_active).length}
-          </div>
-        </div>
-        
-        <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-2xl border border-green-200">
-          <div className="text-sm text-green-600 font-medium">Secrétaires</div>
-          <div className="text-2xl font-bold text-green-900">
-            {filteredUsers.filter(u => u.role === "SECRETAIRE" && u.is_active).length}
-          </div>
-        </div>
-        
-        <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl border border-purple-200">
-          <div className="text-sm text-purple-600 font-medium">Total utilisateurs</div>
-          <div className="text-2xl font-bold text-purple-900">{filteredUsers.filter(u => u.is_active).length}</div>
-        </div>
-      </div>
+    
 
-      {/* Tableau */}
+      {/* Tableau - MODIFIÉ (colonne statut supprimée) */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="flex justify-center items-center py-12">
@@ -1157,92 +1139,64 @@ const MedecinsTabContent: React.FC<MedecinsTabContentProps> = ({
         ) : pageUsers.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-400 text-6xl mb-4">👨‍⚕️</div>
-            <h3 className="text-lg font-semibold text-gray-900">Aucun utilisateur trouvé</h3>
-            <p className="text-gray-600 mt-1">Aucun résultat ne correspond à votre recherche</p>
+            <h3 className="text-lg font-semibold text-gray-900">{t('direction.noUsersFound')}</h3>
+            <p className="text-gray-600 mt-1">{t('direction.noResults')}</p>
             <button 
               onClick={() => { setQuery(""); setPage(1); }}
               className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
             >
-              Réinitialiser la recherche
+              {t('actions.reset')}
             </button>
           </div>
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[600px]">
                 <thead className="bg-gradient-to-r from-gray-50 to-blue-50/30">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Utilisateur</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Contact</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Rôle/Spécialité</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Statut</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
+                    <th className="px-3 lg:px-4 py-3 text-left text-xs lg:text-sm font-semibold text-gray-700">{t('direction.user')}</th>
+                    <th className="px-3 lg:px-4 py-3 text-left text-xs lg:text-sm font-semibold text-gray-700">{t('common.email')}</th>
+                    <th className="px-3 lg:px-4 py-3 text-left text-xs lg:text-sm font-semibold text-gray-700">{t('direction.roleDepartment')}</th>
+                    <th className="px-3 lg:px-4 py-3 text-right text-xs lg:text-sm font-semibold text-gray-700">{t('actions.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {pageUsers.map(user => (
                     <tr key={user.id} className="hover:bg-gray-50/50 transition-colors duration-150">
-                      <td className="px-4 py-3">
+                      <td className="px-3 lg:px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center font-semibold text-sm overflow-hidden">
+                          <div className="h-8 w-8 lg:h-10 lg:w-10 rounded-lg lg:rounded-xl bg-gradient-to-br from-gray-200 to-gray-300 text-gray-600 flex items-center justify-center font-semibold text-xs lg:text-sm overflow-hidden">
                             {user.photo ? (
-                              <img src={user.photo} alt={`${user.prenom} ${user.nom}`} className="h-full w-full object-cover" />
+                              <img src={mediaUrl(user.photo) || ""} alt={`${user.first_name} ${user.last_name}`} className="h-full w-full object-cover" />
                             ) : (
-                              `${user.prenom[0]}${user.nom[0]}`
+                              `${user.first_name[0]}${user.last_name[0]}`
                             )}
                           </div>
-                          <div>
-                            <div className="font-medium text-gray-900">{user.prenom} {user.nom}</div>
+                          <div className="min-w-0">
+                            <div className="font-medium text-gray-900 text-sm lg:text-base truncate max-w-[120px] lg:max-w-none">{user.first_name} {user.last_name}</div>
                             <div className="text-xs text-gray-400 capitalize">{user.role.toLowerCase()}</div>
                           </div>
                         </div>
                       </td>
 
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        <div>{user.email}</div>
+                      <td className="px-3 lg:px-4 py-3 text-xs lg:text-sm text-gray-600">
+                        <div className="truncate max-w-[150px] lg:max-w-none">{user.email}</div>
                         <div className="text-xs text-gray-500">{user.telephone || "-"}</div>
                       </td>
 
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        <div>{user.specialite || user.poste || "-"}</div>
+                      <td className="px-3 lg:px-4 py-3 text-xs lg:text-sm text-gray-600">
+                        <div className="capitalize">{user.role.toLowerCase()}</div>
                         <div className="text-xs text-gray-500">{user.departement || "-"}</div>
                       </td>
 
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          user.is_active 
-                            ? "bg-green-100 text-green-800" 
-                            : "bg-red-100 text-red-800"
-                        }`}>
-                          {user.is_active ? "🟢 Actif" : "🔴 Inactif"}
-                        </span>
-                      </td>
-
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button 
-                            onClick={() => onEditUser(user)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors duration-200 text-sm"
-                          >
-                            <IconEdit />
-                            Modifier
-                          </button>
-                          <button 
-                            onClick={() => onToggleActive(user)}
-                            className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors duration-200 ${
-                              user.is_active
-                                ? "bg-orange-50 text-orange-700 hover:bg-orange-100"
-                                : "bg-green-50 text-green-700 hover:bg-green-100"
-                            }`}
-                          >
-                            {user.is_active ? "Désactiver" : "Activer"}
-                          </button>
+                      <td className="px-3 lg:px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1 lg:gap-2">
                           <button 
                             onClick={() => setConfirmDelete({ open: true, user })}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition-colors duration-200 text-sm"
+                            className="inline-flex items-center gap-1 px-2 lg:px-3 py-1 lg:py-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition-colors duration-200 text-xs lg:text-sm"
                           >
-                            <IconTrash />
-                            Archiver
+                            <IconTrash className="w-3 h-3 lg:w-4 lg:h-4" />
+                            <span className="hidden sm:inline">{t('common.delete')}</span>
                           </button>
                         </div>
                       </td>
@@ -1253,26 +1207,24 @@ const MedecinsTabContent: React.FC<MedecinsTabContentProps> = ({
             </div>
 
             {/* Pagination */}
-            <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                Page {page} sur {totalPages} • {filteredUsers.length} résultat(s)
+            <div className="px-3 lg:px-4 py-3 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="text-xs lg:text-sm text-gray-600">
+                {t('direction.page')} {page} {t('direction.of')} {totalPages} • {filteredUsers.length} {t('direction.results')}
               </div>
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => setPage(Math.max(1, page - 1))}
-
                   disabled={page === 1}
-                  className="px-4 py-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors duration-200"
+                  className="px-3 lg:px-4 py-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors duration-200 text-xs lg:text-sm"
                 >
-                  Précédent
+                  {t('common.back')}
                 </button>
                 <button 
-                 onClick={() => setPage(Math.min(totalPages, page + 1))}
-
+                  onClick={() => setPage(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages}
-                  className="px-4 py-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors duration-200"
+                  className="px-3 lg:px-4 py-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors duration-200 text-xs lg:text-sm"
                 >
-                  Suivant
+                  {t('common.next')}
                 </button>
               </div>
             </div>
@@ -1283,33 +1235,33 @@ const MedecinsTabContent: React.FC<MedecinsTabContentProps> = ({
       {/* Modal de confirmation de suppression */}
       {confirmDelete.open && confirmDelete.user && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+          <div className="bg-white rounded-xl lg:rounded-2xl max-w-md w-full p-4 lg:p-6">
             <div className="text-center">
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                
+                <IconTrash className="w-6 h-6 text-red-600" />
               </div>
               
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Archiver utilisateur</h3>
-              <p className="text-gray-600">
-                Êtes-vous sûr de vouloir archiver {confirmDelete.user.prenom} {confirmDelete.user.nom} ?
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('direction.deleteUser')}</h3>
+              <p className="text-gray-600 text-sm lg:text-base">
+                {t('direction.deleteConfirmation', { name: `${confirmDelete.user.first_name} ${confirmDelete.user.last_name}` })}
               </p>
             </div>
             
             <div className="mt-6 flex justify-center gap-3">
               <button 
                 onClick={() => setConfirmDelete({ open: false })} 
-                className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors duration-200"
+                className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors duration-200 text-sm lg:text-base"
               >
-                Annuler
+                {t('common.cancel')}
               </button>
               <button 
                 onClick={() => {
                   onDeleteUser(confirmDelete.user!.id);
                   setConfirmDelete({ open: false });
                 }} 
-                className="px-6 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors duration-200"
+                className="px-6 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors duration-200 text-sm lg:text-base"
               >
-                Archiver
+                {t('common.delete')}
               </button>
             </div>
           </div>
@@ -1319,247 +1271,161 @@ const MedecinsTabContent: React.FC<MedecinsTabContentProps> = ({
   );
 };
 
-// ==================== MODAL UTILISATEUR ====================
-interface UserModalProps {
-  mode: "add" | "edit";
-  user: User | null;
-  onClose: () => void;
-  onSubmit: (payload: Partial<User>) => void;
+// ==================== ONGLET CRÉER UTILISATEUR ====================
+interface CreerUtilisateurTabContentProps {
+  newUserData: any;
+  setNewUserData: (data: any) => void;
+  isSaving: boolean;
+  onCreateUser: () => void;
 }
 
-const UserModal: React.FC<UserModalProps> = ({ mode, user, onClose, onSubmit }) => {
-  const [formData, setFormData] = useState({
-    prenom: user?.prenom ?? "",
-    nom: user?.nom ?? "",
-    email: user?.email ?? "",
-    telephone: user?.telephone ?? "",
-    role: (user?.role ?? "MEDECIN") as User["role"],
-    specialite: user?.specialite ?? "",
-    departement: user?.departement ?? "",
-    poste: user?.poste ?? "",
-    photo: user?.photo ?? "",
-  });
-  const [saving, setSaving] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(user?.photo || null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+const CreerUtilisateurTabContent: React.FC<CreerUtilisateurTabContentProps> = ({
+  newUserData,
+  setNewUserData,
+  isSaving,
+  onCreateUser,
+}) => {
+  const { t } = useTranslation();
 
-  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert("La taille maximale est de 5MB");
-      return;
-    }
-
-    if (!file.type.startsWith('image/')) {
-      alert("Veuillez sélectionner une image valide");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      setPhotoPreview(result);
-      setFormData(prev => ({ ...prev, photo: result }));
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleRemovePhoto = () => {
-    setPhotoPreview(null);
-    setFormData(prev => ({ ...prev, photo: "" }));
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleSubmit = async () => {
-    if (!formData.prenom || !formData.nom || !formData.email) { 
-      alert("Prénom, nom et email sont obligatoires."); 
-      return; 
-    }
-    
-    setSaving(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 600));
-      onSubmit(formData);
-      onClose();
-    } catch (error) {
-      console.error("Erreur lors de l'ajout:", error);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleChange = (field: keyof typeof formData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleChange = (field: string, value: string | boolean) => {
+    setNewUserData((prev: any) => ({ ...prev, [field]: value }));
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-gray-900">
-              {mode === "add" ? "Ajouter un Utilisateur" : "Modifier l'Utilisateur"}
-            </h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors duration-200">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
-              </svg>
+    <div className="p-4 lg:p-6">
+      <div className="mb-6">
+        <h2 className="text-xl lg:text-2xl font-bold text-gray-900">👥 {t('direction.createUser')}</h2>
+        <p className="text-gray-600 text-sm lg:text-base">{t('direction.createUserDescription')}</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        <div className="lg:col-span-2 p-4 lg:p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl lg:rounded-2xl border border-blue-200">
+          <h3 className="font-semibold text-blue-900 mb-4">{t('direction.userInformation')}</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+            {[
+              { label: `${t('common.firstName')} *`, field: "first_name", type: "text", placeholder: t('common.firstName') },
+              { label: `${t('common.lastName')} *`, field: "last_name", type: "text", placeholder: t('common.lastName') },
+              { label: `${t('common.username')} *`, field: "username", type: "text", placeholder: "ex: aicha.essalmi" },
+              { label: `${t('common.email')} *`, field: "email", type: "email", placeholder: "email@clinique.local" },
+              { label: t('common.phone'), field: "telephone", type: "text", placeholder: "+212 6 12 34 56 78" },
+            ].map(({ label, field, type, placeholder }) => (
+              <div key={field}>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">{label}</label>
+                <input 
+                  type={type}
+                  value={newUserData[field]}
+                  onChange={(e) => handleChange(field, e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 lg:px-4 py-2 lg:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm lg:text-base"
+                  placeholder={placeholder}
+                />
+              </div>
+            ))}
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">{t('role')}</label>
+              <select 
+                value={newUserData.role} 
+                onChange={(e) => handleChange("role", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 lg:px-4 py-2 lg:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm lg:text-base"
+              >
+                <option value="MEDECIN">{t('roles.doctor')}</option>
+                <option value="SECRETAIRE">{t('roles.secretary')}</option>
+                <option value="DIRECTION">{t('roles.direction')}</option>
+              </select>
+            </div>
+
+            {/* SUPPRIMÉ: Champ statut */}
+
+            {newUserData.role === "MEDECIN" ? (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">{t('settings.personalCode')} *</label>
+                <input 
+                  value={newUserData.code_personnel} 
+                  onChange={(e) => handleChange("code_personnel", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 lg:px-4 py-2 lg:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm lg:text-base"
+                  placeholder={t('settings.enterNewCode')}
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  {t('password')} *
+                </label>
+                <input 
+                  type="password"
+                  value={newUserData.password} 
+                  onChange={(e) => handleChange("password", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 lg:px-4 py-2 lg:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm lg:text-base"
+                  placeholder={t('settings.newPassword')}
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">{t('settings.department')}</label>
+              <select 
+                value={newUserData.departement} 
+                onChange={(e) => handleChange("departement", e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 lg:px-4 py-2 lg:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm lg:text-base"
+              >
+                <option value="">{t('settings.selectDepartment')}</option>
+                {DEPARTEMENTS.map(dept => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </select>
+            </div>
+
+            {newUserData.role === "SECRETAIRE" && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">{t('secretary.postExtension')}</label>
+                <input 
+                  value={newUserData.poste} 
+                  onChange={(e) => handleChange("poste", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 lg:px-4 py-2 lg:py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 text-sm lg:text-base"
+                  placeholder={t('secretary.postExtension')}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 flex flex-col sm:flex-row justify-end gap-3">
+            <button 
+              onClick={() => {
+                setNewUserData({
+                  username: "",
+                  first_name: "",
+                  last_name: "",
+                  email: "",
+                  telephone: "",
+                  role: "MEDECIN",
+                  specialite: "",
+                  departement: "",
+                  poste: "",
+                  code_personnel: "",
+                  password: "",
+                  is_active: true
+                });
+              }}
+              className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors duration-200 text-sm lg:text-base order-2 sm:order-1"
+            >
+              {t('actions.reset')}
+            </button>
+            <button 
+              onClick={onCreateUser}
+              disabled={isSaving}
+              className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors duration-200 flex items-center justify-center gap-2 text-sm lg:text-base order-1 sm:order-2"
+            >
+              {isSaving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  {t('common.creating')}
+                </>
+              ) : (
+                t('actions.create')
+              )}
             </button>
           </div>
-        </div>
-
-        <div className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Photo de profil */}
-            <div className="lg:col-span-1">
-              <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl border border-blue-200 text-center">
-                <h4 className="font-semibold text-blue-900 mb-4">Photo de Profil</h4>
-                
-                <div className="relative inline-block mb-4">
-                  <div className="h-24 w-24 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center text-2xl font-bold shadow-lg mx-auto overflow-hidden">
-                    {photoPreview ? (
-                      <img 
-                        src={photoPreview} 
-                        alt="Profile" 
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      `${formData.prenom[0] || "U"}${formData.nom[0] || "S"}`
-                    )}
-                  </div>
-                  
-                  <div className="absolute -bottom-2 -right-2 flex gap-2">
-                    <button
-                      onClick={triggerFileInput}
-                      className="p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors duration-200"
-                      title="Changer la photo"
-                    >
-                      <IconCamera className="w-3 h-3" />
-                    </button>
-                    
-                    {photoPreview && (
-                      <button
-                        onClick={handleRemovePhoto}
-                        className="p-2 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-colors duration-200"
-                        title="Supprimer la photo"
-                      >
-                        <IconTrash className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handlePhotoUpload}
-                  accept="image/*"
-                  className="hidden"
-                />
-
-                <p className="text-xs text-gray-600">
-                  PNG, JPG, JPEG max 5MB
-                </p>
-              </div>
-            </div>
-
-            {/* Informations */}
-            <div className="lg:col-span-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[
-                  { label: "Prénom *", field: "prenom", type: "text", placeholder: "Prénom" },
-                  { label: "Nom *", field: "nom", type: "text", placeholder: "Nom" },
-                  { label: "Email *", field: "email", type: "email", placeholder: "email@clinique.local" },
-                  { label: "Téléphone", field: "telephone", type: "text", placeholder: "+212 6 12 34 56 78" },
-                ].map(({ label, field, type, placeholder }) => (
-                  <div key={field}>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">{label}</label>
-                    <input 
-                      type={type}
-                      value={formData[field as keyof typeof formData]}
-                      onChange={(e) => handleChange(field as keyof typeof formData, e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
-                      placeholder={placeholder}
-                    />
-                  </div>
-                ))}
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Rôle</label>
-                  <select 
-                    value={formData.role} 
-                    onChange={(e) => handleChange("role", e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
-                  >
-                    <option value="MEDECIN">Médecin</option>
-                    <option value="SECRETAIRE">Secrétaire</option>
-                    <option value="DIRECTION">Direction</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Spécialité</label>
-                  <input 
-                    value={formData.specialite} 
-                    onChange={(e) => handleChange("specialite", e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
-                    placeholder="Spécialité médicale"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Département</label>
-                  <input 
-                    value={formData.departement} 
-                    onChange={(e) => handleChange("departement", e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
-                    placeholder="Département"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Poste</label>
-                  <input 
-                    value={formData.poste} 
-                    onChange={(e) => handleChange("poste", e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
-                    placeholder="Poste occupé"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
-          <button 
-            onClick={onClose} 
-            className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors duration-200"
-          >
-            Annuler
-          </button>
-          <button 
-            onClick={handleSubmit}
-            disabled={saving}
-            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors duration-200 flex items-center gap-2"
-          >
-            {saving ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Enregistrement...
-              </>
-            ) : (
-              mode === "add" ? "Ajouter" : "Modifier"
-            )}
-          </button>
         </div>
       </div>
     </div>
