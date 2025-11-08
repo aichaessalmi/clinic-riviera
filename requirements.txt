@@ -1,20 +1,12 @@
-# --- Django & API ---
 Django>=5.0,<6.0
 djangorestframework>=3.15.0
 drf-spectacular>=0.27.0
-
-# --- Auth / JWT ---
 djangorestframework-simplejwt>=5.3.1
-
-# --- Prod / Déploiement ---
 gunicorn>=21.2.0
 whitenoise>=6.6.0
 dj-database-url>=2.2.0
-psycopg2-binary>=2.9.9   # pour Postgres (Supabase/Render)
-python-dotenv>=1.0.1     # pour .env
-
-# --- Utilitaires ---
+psycopg2-binary>=2.9.9  
+python-dotenv>=1.0.1     
 django-cors-headers>=4.3.1
 twilio>=8.0.0
 django-filter>=24.3
-C:\Users\PC USER\OneDrive\Bureau\clinic_backend\requirements.txt
