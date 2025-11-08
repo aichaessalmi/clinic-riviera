@@ -1,4 +1,3 @@
-// src/api/referrals.ts
 import http from "./http";
 import i18n from "../i18n";
 
@@ -87,27 +86,26 @@ export async function markArrived(referralId: number, room_number: string) {
 }
 
 /* ========= API LOOKUPS ========= */
-// 💡 maintenant toutes les fonctions ajoutent aussi ?lang=${i18n.language}
-
+// 💡 les endpoints sont séparés : referrals vs accounts
 export async function fetchPatients() {
-  const { data } = await http.get(`/patients/`);
+  const { data } = await http.get(`/referrals/patients/`);
   return data;
 }
 
 export async function fetchInterventions() {
   const lang = i18n.language || "fr";
-  const { data } = await http.get(`/interventions-list/?lang=${lang}`);
+  const { data } = await http.get(`/referrals/interventions-list/?lang=${lang}`);
   return data;
 }
 
 export async function fetchUrgencies() {
   const lang = i18n.language || "fr";
-  const { data } = await http.get(`/urgencies-list/?lang=${lang}`);
+  const { data } = await http.get(`/referrals/urgencies-list/?lang=${lang}`);
   return data;
 }
 
 export async function fetchInsurances() {
-  const { data } = await http.get(`/insurances-list/`);
+  const { data } = await http.get(`/referrals/insurances-list/`);
   return data;
 }
 
@@ -118,6 +116,6 @@ export async function fetchPhysicians() {
 
 /* ========= STATS ========= */
 export async function fetchReferralStats() {
-  const { data } = await http.get("/referrals/stats/");
+  const { data } = await http.get(`/referrals/stats/`);
   return data;
 }

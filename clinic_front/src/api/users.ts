@@ -1,12 +1,12 @@
 import axios from "axios";
 
-// ✅ utilise la même logique que http.ts
+// ✅ Base URL — ne contient PAS "/accounts"
 const API_URL =
   import.meta.env.VITE_API_URL?.trim()?.replace(/\/+$/, "") ||
-  "https://clinic-riviera-1.onrender.com/api/accounts";
+  "https://clinic-riviera-1.onrender.com/api";
 
 export const http = axios.create({
-  baseURL: API_URL,
+  baseURL: `${API_URL}/accounts`, // ✅ on ajoute ici UNE seule fois
 });
 
 // Middleware token
@@ -45,21 +45,15 @@ export const updateCurrentUserPhoto = async (file: File) => {
 export const mediaUrl = (path?: string | null) => {
   if (!path) return "";
 
-  // ✅ Cas 1 : déjà une URL absolue
-  if (path.startsWith("http")) return path;
+  if (path.startsWith("http")) return path; // URL complète
+  if (path.startsWith("data:image")) return path; // image locale
 
-  // ✅ Cas 2 : image base64 locale
-  if (path.startsWith("data:image")) return path;
-
-  // ✅ Cas 3 : image backend
   const cleanPath = path.replace(/^\/?media\//, "");
-
   const backend =
     import.meta.env.VITE_API_URL?.replace(/\/+$/, "") ||
     "https://clinic-riviera-1.onrender.com";
 
   const fullUrl = `${backend}/media/${cleanPath}`;
   console.log("🧩 [mediaUrl] Entrée :", path, "➡️ URL finale :", fullUrl);
-
   return fullUrl;
 };

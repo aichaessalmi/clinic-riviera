@@ -12,7 +12,7 @@ function buildBaseURL() {
   base = base.replace(/\/api$/, "");
 
   // Ajoute une seule fois /api
- const finalBase = base + "/api/accounts";
+ const finalBase = base + "/api";
 
   console.log("🌐 Base API finale utilisée :", finalBase);
   return finalBase;
