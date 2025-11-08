@@ -6,8 +6,7 @@ import i18n from "../i18n"; // ✅ pour accéder à la langue courante
  * Évite TOUT doublon "api/api" même si VITE_API_URL contient déjà /api.
  */
 function buildBaseURL() {
-  let base = import.meta.env.VITE_API_URL?.trim() || "http://127.0.0.1:8000";
-
+  let base = import.meta.env.VITE_API_URL?.trim() || "https://clinic-riviera-1.onrender.com";
   // Supprime les "/" finaux
   base = base.replace(/\/+$/, "");
 
