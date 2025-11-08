@@ -1,7 +1,9 @@
-// src/api/users.ts
 import axios from "axios";
 
-const API_URL = "http://127.0.0.1:8000/api/accounts"; // adapte si nécessaire
+// ✅ utilise la même logique que http.ts
+const API_URL =
+  import.meta.env.VITE_API_URL?.trim()?.replace(/\/+$/, "") ||
+  "https://clinic-riviera-1.onrender.com/api/accounts";
 
 export const http = axios.create({
   baseURL: API_URL,
@@ -43,18 +45,18 @@ export const updateCurrentUserPhoto = async (file: File) => {
 export const mediaUrl = (path?: string | null) => {
   if (!path) return "";
 
-  // ✅ Cas 1 : déjà une URL absolue (http, https)
+  // ✅ Cas 1 : déjà une URL absolue
   if (path.startsWith("http")) return path;
 
-  // ✅ Cas 2 : c’est une image locale encodée en base64 (prévisualisation)
+  // ✅ Cas 2 : image base64 locale
   if (path.startsWith("data:image")) return path;
 
-  // ✅ Cas 3 : chemin relatif provenant du backend (ex: "media/users/photo.jpg" ou "/media/users/photo.jpg")
+  // ✅ Cas 3 : image backend
   const cleanPath = path.replace(/^\/?media\//, "");
 
   const backend =
-    import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "") ||
-    "http://127.0.0.1:8000";
+    import.meta.env.VITE_API_URL?.replace(/\/+$/, "") ||
+    "https://clinic-riviera-1.onrender.com";
 
   const fullUrl = `${backend}/media/${cleanPath}`;
   console.log("🧩 [mediaUrl] Entrée :", path, "➡️ URL finale :", fullUrl);
