@@ -1,12 +1,10 @@
 import axios, { AxiosError } from "axios";
-import i18n from "../i18n"; // ✅ pour accéder à la langue courante
+import i18n from "../i18n"; 
 
-/**
- * ✅ Génération propre de l'URL de base.
- * Évite TOUT doublon "api/api" même si VITE_API_URL contient déjà /api.
- */
+
 function buildBaseURL() {
   let base = import.meta.env.VITE_API_URL?.trim() || "https://clinic-riviera-1.onrender.com";
+
   // Supprime les "/" finaux
   base = base.replace(/\/+$/, "");
 
@@ -27,11 +25,7 @@ const http = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-/* ============================================================
-   🟦 Intercepteur de requêtes
-   - Ajoute le JWT si disponible
-   - Ajoute aussi la langue active (Accept-Language)
-   ============================================================ */
+
 http.interceptors.request.use((config) => {
   const token = localStorage.getItem("access");
 
@@ -41,16 +35,16 @@ http.interceptors.request.use((config) => {
     (config.headers as any).Authorization = `Bearer ${token}`;
   }
 
-  // ✅ Langue courante du site (ex: "fr" ou "en")
+
   (config.headers as any)["Accept-Language"] = i18n.language || "fr";
+  console.log("🧩 import.meta.env.VITE_API_URL =", import.meta.env.VITE_API_URL);
+
   console.log("🌐 Header Accept-Language envoyé :", (config.headers as any)["Accept-Language"]);
 
   return config;
 });
 
-/* ============================================================
-   🟥 Intercepteur de réponses (erreurs)
-   ============================================================ */
+
 http.interceptors.response.use(
   (res) => res,
   (error: AxiosError<any>) => {

@@ -6,7 +6,6 @@ from django.utils.translation import gettext_lazy as _
 
 load_dotenv()
 
-# ── Bases ─────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
 
@@ -16,7 +15,6 @@ SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-prod")
 _raw_hosts = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
 ALLOWED_HOSTS = _raw_hosts if _raw_hosts else ["clinic-riviera-1.onrender.com", "localhost", "127.0.0.1"]
 
-# ── Langues / Fuseau horaire ──────────────────────────
 LANGUAGE_CODE = "fr"
 TIME_ZONE = "Africa/Casablanca"
 
@@ -30,12 +28,10 @@ LANGUAGES = [
 
 LOCALE_PATHS = [BASE_DIR / "locale"]
 
-# ── API Twilio (facultatif) ───────────────────────────
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER", "whatsapp:+14155238886")
 
-# ── Applications ──────────────────────────────────────
 INSTALLED_APPS = [
     # Django
     "django.contrib.admin",
@@ -59,7 +55,6 @@ INSTALLED_APPS = [
     "notifications",
 ]
 
-# ── Middleware ────────────────────────────────────────
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -74,7 +69,6 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "clinic_backend.urls"
 
-# ── Templates / Frontend ──────────────────────────────
 FRONTEND_DIR = BASE_DIR / "clinic_front"
 FRONTEND_DIST = FRONTEND_DIR / "dist"
 
@@ -96,7 +90,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "clinic_backend.wsgi.application"
 
-# ── Base de données : SQLite seulement ─────────────────
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -104,7 +98,15 @@ DATABASES = {
     }
 }
 
-# ── Auth / JWT / API ─────────────────────────────────
+
+
+from dj_database_url import parse as dburl
+
+DEFAULT_SQLITE_URL = f"sqlite:///{ROOT_DIR / 'db.sqlite3'}"
+DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_SQLITE_URL)
+
+
+
 AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
@@ -129,7 +131,6 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
 }
 
-# ── CORS / Sécurité front ─────────────────────────────
 CORS_ALLOW_CREDENTIALS = True
 
 DEV_CLIENTS = [
@@ -148,7 +149,6 @@ else:
     CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 
 
-# ── Static & Media (WhiteNoise) ───────────────────────
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [FRONTEND_DIST] if FRONTEND_DIST.exists() else []  # ✅ ajoute ceci
@@ -157,7 +157,6 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 
-# ── Sécurité en production ────────────────────────────
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
