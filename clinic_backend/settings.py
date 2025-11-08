@@ -147,12 +147,15 @@ else:
     CORS_ALLOWED_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
     CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 
+
 # ── Static & Media (WhiteNoise) ───────────────────────
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [FRONTEND_DIST] if FRONTEND_DIST.exists() else []  # ✅ ajoute ceci
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
 
 # ── Sécurité en production ────────────────────────────
 if not DEBUG:
