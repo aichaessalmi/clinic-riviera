@@ -116,9 +116,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // ✅ Envoi au backend (url correcte selon ton API)
       const { data } = await axios.post(
-        "http://127.0.0.1:8000/api/accounts/auth/login/",
-        dataToSend
-      );
+  `${import.meta.env.VITE_API_URL}/accounts/auth/login/`,
+  dataToSend
+);
+
+
 
       // ✅ Stocker le token JWT
       if (data.access) {
@@ -177,9 +179,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!refresh) return;
       try {
         const { data } = await axios.post(
-          "http://127.0.0.1:8000/api/accounts/auth/refresh/",
-          { refresh }
-        );
+  `${import.meta.env.VITE_API_URL}/accounts/auth/refresh/`,
+  { refresh }
+);
+
         if (data.access) {
           localStorage.setItem("access", data.access);
           setAccess(data.access);
