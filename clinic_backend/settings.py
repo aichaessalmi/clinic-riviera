@@ -6,7 +6,6 @@ from django.utils.translation import gettext_lazy as _
 
 load_dotenv()
 
-# ── Bases ─────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
 
@@ -16,7 +15,6 @@ SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-prod")
 _raw_hosts = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
 ALLOWED_HOSTS = _raw_hosts if _raw_hosts else (["*"] if DEBUG else ["localhost", "127.0.0.1"])
 
-# ── i18n / Timezone ──────────────────────────────────────────────────
 LANGUAGE_CODE = "fr"  # Langue par défaut
 TIME_ZONE = "Africa/Casablanca"
 
@@ -29,11 +27,9 @@ LANGUAGES = [
     ("en", _("Anglais")),
 ]
 
-# 🟦 Dossier global pour les fichiers de traduction
 LOCALE_PATHS = [
     BASE_DIR / "locale",
 ]
-# ── Bases ─────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
 
@@ -43,12 +39,10 @@ SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-prod")
 _raw_hosts = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
 ALLOWED_HOSTS = _raw_hosts if _raw_hosts else (["*"] if DEBUG else ["localhost", "127.0.0.1"])
 
-# ── Secrets externes (ex: Twilio) ────────────────────────────────────
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER", "whatsapp:+14155238886")
 
-# ── Apps ──────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
     # Django core
     "django.contrib.admin",
@@ -72,11 +66,10 @@ INSTALLED_APPS = [
     'notifications',
 ]
 
-# ── Middleware (ordre important) ─────────────────────────────────────
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "corsheaders.middleware.CorsMiddleware",          # ← avant CommonMiddleware
+    "corsheaders.middleware.CorsMiddleware",         
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -87,7 +80,6 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "clinic_backend.urls"
 
-# ── Front (Vite build) + Templates ───────────────────────────────────
 FRONTEND_DIR  = BASE_DIR / "clinic_front"
 FRONTEND_DIST = FRONTEND_DIR / "dist"
 FRONTEND_ASSETS = FRONTEND_DIST / "assets"
@@ -108,9 +100,7 @@ TEMPLATES = [{
 
 WSGI_APPLICATION = "clinic_backend.wsgi.application"
 
-# ── Base de données ──────────────────────────────────────────────────
-<<<<<<< HEAD
-# (Tu as demandé SQLite uniquement, même sur Render)
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -118,8 +108,7 @@ DATABASES = {
     }
 }
 
-# ── DRF / Auth / Pagination / Filtres ────────────────────────────────
-=======
+
 from dj_database_url import parse as dburl
 
 DEFAULT_SQLITE_URL = f"sqlite:///{ROOT_DIR / 'db.sqlite3'}"
@@ -145,10 +134,8 @@ if "postgres" in DATABASE_URL or "postgresql" in DATABASE_URL:
     })
 
 
-# ── Auth / DRF / JWT / Swagger ───────────────────────────────────────
 AUTH_USER_MODEL = "accounts.User"
 
->>>>>>> 33d1b5f9495d525045b8c956b4210926b06be325
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -175,7 +162,6 @@ SPECTACULAR_SETTINGS = {
 
 AUTH_USER_MODEL = "accounts.User"
 
-# ── CORS / CSRF ──────────────────────────────────────────────────────
 CORS_ALLOW_CREDENTIALS = True
 
 DEV_CLIENTS = [
@@ -200,7 +186,6 @@ else:
         CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 
 
-# ── Static & Media (WhiteNoise + Vite) ───────────────────────────────
 STATIC_URL = os.getenv("STATIC_URL", "/static/")
 if not STATIC_URL.endswith("/"):
     STATIC_URL += "/"
@@ -213,7 +198,6 @@ WHITENOISE_USE_FINDERS = True
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# ── Sécurité production ──────────────────────────────────────────────
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
