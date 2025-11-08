@@ -166,7 +166,31 @@
   "insurance": "Insurance",
   "priority": "Priority",
   "details": "Details"
-}
+},
+"search_placeholder": "Search by patient, doctor or insurance…",
+"all_doctors": "All doctors",
+
+"details": {
+  "title": "Referral Details",
+  "close": "Close",
+  "patient": "Patient",
+  "doctor": "Doctor",
+  "intervention": "Intervention",
+  "priority": "Priority",
+  "consultation_reason": "Consultation Reason",
+  "referring_doctor": "Referring Doctor",
+  "establishment": "Establishment",
+  "medical_history": "Medical History",
+  "address": "Address",
+  "city": "City",
+  "phone": "Phone",
+  "email": "Email"
+},
+
+"error_loading": "Error loading referrals.",
+"loading": "Loading referrals…",
+"no_results": "No results found"
+
 
 
   },
