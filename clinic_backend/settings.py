@@ -157,6 +157,8 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 
+
+
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
@@ -165,3 +167,13 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 3600
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+
+
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://clinic-riviera-1.onrender.com",
+]
+CORS_ALLOWED_ORIGINS = [
+    "https://clinic-riviera-1.onrender.com",
+]
+CORS_ALLOW_CREDENTIALS = True
