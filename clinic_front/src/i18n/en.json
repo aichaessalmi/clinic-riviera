@@ -127,6 +127,7 @@
   }
 ,
   "referrals": {
+    
     "title": "My Referrals",
     "subtitle": "List of your patient referrals",
     "list_title": "Referrals",
@@ -157,6 +158,16 @@
       "status": "Status",
       "priority": "Priority"
     }
+    "table": {
+  "patient": "Patient",
+  "doctor": "Médecin",
+  "intervention": "Intervention",
+  "date": "Date",
+  "insurance": "Assurance",
+  "priority": "Priorité",
+  "details": "Détails"
+}
+
   },
 
   "notif": {
