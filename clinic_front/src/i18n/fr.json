@@ -67,7 +67,7 @@
       "insurance": "Assurance",
       "status": "Statut",
       "priority": "Priorité"
-    }
+    },
     "table": {
   "patient": "Patient",
   "doctor": "Médecin",
