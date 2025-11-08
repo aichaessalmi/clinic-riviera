@@ -68,6 +68,16 @@
       "status": "Statut",
       "priority": "Priorité"
     }
+    "table": {
+  "patient": "Patient",
+  "doctor": "Médecin",
+  "intervention": "Intervention",
+  "date": "Date",
+  "insurance": "Assurance",
+  "priority": "Priorité",
+  "details": "Détails"
+}
+
   },
 
   "notif": {
