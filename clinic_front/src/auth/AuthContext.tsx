@@ -7,7 +7,6 @@ import React, {
 } from "react";
 import axios from "axios";
 
-
 /* =====================================
    🔹 Types
 ===================================== */
@@ -60,6 +59,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [username, setUsername] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
 
+  // 🧩 Nettoyage et normalisation de l'URL API
+  const apiBase =
+    import.meta.env.VITE_API_URL?.replace(/\/+$/, "") ||
+    "https://clinic-riviera-1.onrender.com/api";
+
   /* ---------------- Hydratation initiale ---------------- */
   useEffect(() => {
     const a = localStorage.getItem("access");
@@ -102,7 +106,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   ===================================== */
   const login = async (payload: any) => {
     try {
-      // ✅ Construire un objet conforme au backend
       const dataToSend: any = {
         username: payload.username,
         role: payload.role?.toUpperCase(),
@@ -114,25 +117,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         dataToSend.password = payload.password;
       }
 
-      // ✅ Envoi au backend (url correcte selon ton API)
+      // ✅ Appel API (Render)
       const { data } = await axios.post(
-  `${import.meta.env.VITE_API_URL}/accounts/auth/login/`,
-  dataToSend
-);
+        `${apiBase}/accounts/auth/login/`,
+        dataToSend,
+        {
+          headers: { "Content-Type": "application/json" },
+          withCredentials: false,
+        }
+      );
 
-
-
-      // ✅ Stocker le token JWT
       if (data.access) {
         localStorage.setItem("access", data.access);
         setAccess(data.access);
       }
-
       if (data.refresh) {
         localStorage.setItem("refresh", data.refresh);
       }
 
-      // ✅ Stocker infos utilisateur
       setRole((data.role as Role) ?? payload.role ?? null);
       setUsername(data.username ?? payload.username ?? null);
 
@@ -179,10 +181,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!refresh) return;
       try {
         const { data } = await axios.post(
-  `${import.meta.env.VITE_API_URL}/accounts/auth/refresh/`,
-  { refresh }
-);
-
+          `${apiBase}/accounts/auth/refresh/`,
+          { refresh },
+          { headers: { "Content-Type": "application/json" } }
+        );
         if (data.access) {
           localStorage.setItem("access", data.access);
           setAccess(data.access);
@@ -193,7 +195,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     };
 
-    // rafraîchir toutes les 9 minutes
     const interval = setInterval(refreshToken, 9 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
