@@ -114,24 +114,7 @@ from dj_database_url import parse as dburl
 DEFAULT_SQLITE_URL = f"sqlite:///{ROOT_DIR / 'db.sqlite3'}"
 DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_SQLITE_URL)
 
-DATABASES = {
-    "default": dburl(
-        DATABASE_URL,
-        conn_max_age=600,
-        ssl_require=("postgres" in DATABASE_URL or "postgresql" in DATABASE_URL),
-    )
-}
 
-# Si PostgreSQL → options SSL & keepalive pour Render
-if "postgres" in DATABASE_URL or "postgresql" in DATABASE_URL:
-    DATABASES["default"].setdefault("OPTIONS", {})
-    DATABASES["default"]["OPTIONS"]["sslmode"] = "require"
-    DATABASES["default"]["OPTIONS"].update({
-        "keepalives": 1,
-        "keepalives_idle": 30,
-        "keepalives_interval": 10,
-        "keepalives_count": 5,
-    })
 
 
 AUTH_USER_MODEL = "accounts.User"
