@@ -76,7 +76,31 @@
   "insurance": "Assurance",
   "priority": "Priorité",
   "details": "Détails"
-}
+},
+    "search_placeholder": "Rechercher par patient, médecin ou assurance…",
+"all_doctors": "Tous les médecins",
+
+"details": {
+  "title": "Détails de l’orientation",
+  "close": "Fermer",
+  "patient": "Patient",
+  "doctor": "Médecin",
+  "intervention": "Intervention",
+  "priority": "Priorité",
+  "consultation_reason": "Raison de consultation",
+  "referring_doctor": "Médecin orientant",
+  "establishment": "Établissement",
+  "medical_history": "Antécédents médicaux",
+  "address": "Adresse",
+  "city": "Ville",
+  "phone": "Téléphone",
+  "email": "Email"
+},
+
+"error_loading": "Erreur de chargement des orientations.",
+"loading": "Chargement des orientations…",
+"no_results": "Aucun résultat trouvé"
+
 
   },
 
